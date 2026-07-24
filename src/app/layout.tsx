@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Comfortaa, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,13 @@ export const metadata: Metadata = {
     "Chat-first document generation — plan, write, review, and export professional PDFs.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#efe6dc",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,9 +41,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${comfortaa.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col text-foreground">
-        {children}
-      </body>
+      <body className="flex min-h-dvh flex-col text-foreground">{children}</body>
     </html>
   );
 }
