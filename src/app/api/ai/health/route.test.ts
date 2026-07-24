@@ -27,6 +27,8 @@ describe("GET /api/ai/health", () => {
       status: "not_configured",
       message: "GOOGLE_GENERATIVE_AI_API_KEY is not configured.",
     });
-    expect(JSON.stringify(body)).not.toContain(originalApiKey ?? "never-present");
+    expect(JSON.stringify(body)).not.toContain(
+      originalApiKey ?? "never-present",
+    );
   });
 });
