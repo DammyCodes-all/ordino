@@ -3,6 +3,7 @@ import type {
   ConversationMessage,
   DocumentCheckpoint,
   DocumentState,
+  InternalRenderResult,
   ReferenceImage,
   ValidationReport,
   VisualReviewResult,
@@ -27,6 +28,7 @@ export type ChatSnapshot = {
   workflowEvents: WorkflowEvent[];
   validation: ValidationReport | null;
   visualReview: VisualReviewResult | null;
+  render: InternalRenderResult | null;
 };
 
 export type PersistedWorkspace = {

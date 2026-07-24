@@ -768,6 +768,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       workflowEvents: workflowEventsRef.current,
       validation: validationRef.current,
       visualReview: visualReviewRef.current,
+      render: publishedRenderRef.current,
     };
     snapshotsRef.current.set(snapshot.id, snapshot);
     setChatHistory((prev) => upsertHistory(prev, entryFromSnapshot(snapshot)));
@@ -837,8 +838,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setVisualReview(snapshot.visualReview);
       setAgentNarration("");
       setLiveToolCalls([]);
-      publishRender(null);
-      setPreviewOpen(false);
+      if (snapshot.render) {
+        publishRender(snapshot.render);
+      } else {
+        publishRender(null);
+        setPreviewOpen(false);
+      }
       setTurn({ running: false, stage: "idle", reviewIteration: 0 });
       setChatHistory((prev) =>
         upsertHistory(prev, {
@@ -876,8 +881,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setWorkflowEvents(active.workflowEvents);
         setValidation(active.validation);
         setVisualReview(active.visualReview);
-        publishRender(null);
-        setPreviewOpen(false);
+        if ((active as any).render) {
+          publishRender((active as any).render);
+        } else {
+          publishRender(null);
+          setPreviewOpen(false);
+        }
         setTurn({ running: false, stage: "idle", reviewIteration: 0 });
       }
       hydratedRef.current = true;
@@ -914,6 +923,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       workflowEvents,
       validation,
       visualReview,
+      render: publishedRenderRef.current,
     };
     snapshotsRef.current.set(current.id, current);
 
