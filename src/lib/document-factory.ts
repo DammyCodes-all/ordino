@@ -84,7 +84,29 @@ export function createMockDocumentFromPrompt(prompt: string): DocumentState {
     {
       id: createId("node"),
       type: "paragraph",
-      text: `Draft generated from your request: “${prompt.trim().slice(0, 280)}”. This preview is a mock until the document and agent modules are connected.`,
+      text: `This is a fake Ordino PDF generated from your request: “${prompt.trim().slice(0, 220)}”. Use it to judge layout, sidebar scale, and export feel before the real renderer lands.`,
+      style: {
+        ...defaultSpacing,
+        alignment: "left",
+        emphasis: "normal",
+      },
+    },
+    {
+      id: createId("node"),
+      type: "heading",
+      level: 2,
+      text: "Executive summary",
+      style: {
+        ...defaultSpacing,
+        spaceBefore: "md",
+        alignment: "left",
+        keepWithNext: true,
+      },
+    },
+    {
+      id: createId("node"),
+      type: "paragraph",
+      text: "Ordino drafts professional documents through chat, keeps intermediate renders private, and publishes a final PDF preview only when the agent turn completes. Reference images stay as AI context and are not placed into the PDF in v1.",
       style: {
         ...defaultSpacing,
         alignment: "left",
@@ -102,6 +124,102 @@ export function createMockDocumentFromPrompt(prompt: string): DocumentState {
         "Export the final PDF",
       ],
       style: { ...defaultSpacing, compact: false },
+    },
+    {
+      id: createId("node"),
+      type: "callout",
+      title: "Note",
+      text: "This preview is a stand-in PDF so you can evaluate the Claude-style artifact sidebar. Teammate A will replace it with the production renderer.",
+      style: {
+        ...defaultSpacing,
+        variant: "note",
+      },
+    },
+    {
+      id: createId("node"),
+      type: "heading",
+      level: 2,
+      text: "Sample schedule",
+      style: {
+        ...defaultSpacing,
+        spaceBefore: "md",
+        alignment: "left",
+        keepWithNext: true,
+      },
+    },
+    {
+      id: createId("node"),
+      type: "table",
+      columns: [
+        { header: "Phase", widthPercent: 34 },
+        { header: "Owner", widthPercent: 33 },
+        { header: "Status", widthPercent: 33 },
+      ],
+      rows: [
+        ["Discovery", "You", "Complete"],
+        ["Drafting", "Ordino", "In progress"],
+        ["Visual review", "Vision loop", "Queued"],
+      ],
+      style: {
+        ...defaultSpacing,
+        density: "comfortable",
+        headerAlignment: "left",
+        striped: true,
+      },
+    },
+    {
+      id: createId("node"),
+      type: "page_break",
+    },
+    {
+      id: createId("node"),
+      type: "heading",
+      level: 2,
+      text: "Appendix",
+      style: {
+        ...defaultSpacing,
+        spaceBefore: "md",
+        alignment: "left",
+        keepWithNext: true,
+      },
+    },
+    {
+      id: createId("node"),
+      type: "quote",
+      text: "Editing is chat-only. There is no direct block or WYSIWYG editor in v1.",
+      attribution: "Ordino collaboration contract",
+      style: {
+        ...defaultSpacing,
+        alignment: "left",
+      },
+    },
+    {
+      id: createId("node"),
+      type: "paragraph",
+      text: "Continue prompting in chat to revise. The previous published preview stays visible while a follow-up turn runs, matching the final-only publication rule.",
+      style: {
+        ...defaultSpacing,
+        alignment: "left",
+        emphasis: "normal",
+      },
+    },
+    {
+      id: createId("node"),
+      type: "divider",
+      style: {
+        ...defaultSpacing,
+        variant: "subtle",
+      },
+    },
+    {
+      id: createId("node"),
+      type: "paragraph",
+      text: "End of fake preview document.",
+      style: {
+        ...defaultSpacing,
+        alignment: "left",
+        emphasis: "italic",
+      },
     },
   ];
 

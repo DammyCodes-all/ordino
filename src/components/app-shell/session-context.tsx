@@ -10,6 +10,10 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  downloadFileName,
+  renderFakePdfBlob,
+} from "@/components/pdf-preview/fake-pdf-document";
 import type {
   AgentTurnState,
   ConversationMessage,
@@ -139,9 +143,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
   const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
     {
-      name: "google_ai",
+      name: "google_ai_service",
       status: "checking",
       message: "Checking Google AI Studio…",
+      remediation: null,
+    },
+    {
+      name: "api_key",
+      status: "checking",
+      message: "Checking API key configuration…",
       remediation: null,
     },
     {
@@ -153,13 +163,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     {
       name: "pdf_renderer",
       status: "ready",
-      message: "PDF renderer pending Teammate A (mock ready).",
+      message: "Fake PDF renderer active for UI preview.",
       remediation: null,
     },
     {
       name: "export",
       status: "ready",
-      message: "Export pipeline pending Teammate A (mock ready).",
+      message: "Fake PDF export available.",
       remediation: null,
     },
   ]);
@@ -193,11 +203,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const refreshHealth = useCallback(async () => {
     setDiagnosticChecks((prev) =>
       prev.map((check) =>
-        check.name === "google_ai"
+        check.name === "google_ai_service" || check.name === "api_key"
           ? {
               ...check,
               status: "checking",
-              message: "Checking Google AI Studio…",
+              message:
+                check.name === "api_key"
+                  ? "Checking API key configuration…"
+                  : "Checking Google AI Studio…",
               remediation: null,
             }
           : check,
@@ -212,7 +225,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setHealth(null);
         setDiagnosticChecks((prev) =>
           prev.map((check) =>
-            check.name === "google_ai"
+            check.name === "google_ai_service" || check.name === "api_key"
               ? {
                   ...check,
                   status: "failed",
@@ -228,27 +241,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       setHealth(parsed.data);
       const ready = parsed.data.status === "ready";
+      const notConfigured = parsed.data.status === "not_configured";
       setDiagnosticChecks((prev) =>
-        prev.map((check) =>
-          check.name === "google_ai" ||
-          check.name === "api_key" ||
-          check.name === "model"
-            ? {
-                name: check.name === "google_ai" ? "google_ai" : check.name,
-                status: ready ? "ready" : "failed",
-                message: parsed.data.message,
-                remediation: ready
+        prev.map((check) => {
+          if (check.name === "api_key") {
+            return {
+              ...check,
+              status: notConfigured ? "failed" : ready ? "ready" : "failed",
+              message: parsed.data.message,
+              remediation: notConfigured
+                ? "Set GOOGLE_GENERATIVE_AI_API_KEY in the server environment (never NEXT_PUBLIC_)."
+                : ready
                   ? null
-                  : "Set GOOGLE_GENERATIVE_AI_API_KEY in the server environment (never NEXT_PUBLIC_).",
-              }
-            : check,
-        ),
+                  : "Verify the server key and model configuration.",
+            };
+          }
+          if (check.name === "google_ai_service") {
+            return {
+              ...check,
+              status: ready ? "ready" : "failed",
+              message: parsed.data.message,
+              remediation: ready
+                ? null
+                : "Confirm internet access and Google AI Studio availability.",
+            };
+          }
+          return check;
+        }),
       );
     } catch {
       setHealth(null);
       setDiagnosticChecks((prev) =>
         prev.map((check) =>
-          check.name === "google_ai"
+          check.name === "google_ai_service" || check.name === "api_key"
             ? {
                 ...check,
                 status: "failed",
@@ -266,10 +291,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refreshHealth();
   }, [refreshHealth]);
 
-  const generationBlocked = useMemo(() => {
-    const google = diagnosticChecks.find((c) => c.name === "google_ai");
-    return google?.status === "failed";
-  }, [diagnosticChecks]);
+  const generationBlocked = false;
 
   const outline = useMemo(() => deriveOutline(document), [document]);
   const actionsDisabled = turn.running;
@@ -370,24 +392,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const exportPdf = useCallback(() => {
     if (!publishedPreview) return;
-    const blob = new Blob(
-      [
-        `Ordino mock export\n\nTitle: ${document.meta.title}\nNodes: ${document.nodes.length}\nVersion: ${document.version}\n`,
-      ],
-      { type: "text/plain" },
-    );
-    const url = URL.createObjectURL(blob);
-    const anchor = window.document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${document.meta.title.replace(/[^\w-]+/g, "_") || "ordino"}.txt`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }, [
-    document.meta.title,
-    document.nodes.length,
-    document.version,
-    publishedPreview,
-  ]);
+    void renderFakePdfBlob(document).then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = downloadFileName(document.meta.title);
+      anchor.click();
+      URL.revokeObjectURL(url);
+    });
+  }, [document, publishedPreview]);
 
   const addReference = useCallback(
     async (file: File) => {
