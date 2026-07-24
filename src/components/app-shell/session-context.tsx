@@ -205,11 +205,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function reviewIterationFromMessage(message: string): 0 | 1 | 2 | 3 | null {
+function reviewIterationFromMessage(message: string): 0 | 1 | null {
   const match = /revision pass (\d+)/i.exec(message);
   if (!match) return null;
   const value = Number(match[1]);
-  if (value === 1 || value === 2 || value === 3) return value;
+  if (value === 1) return value;
   return null;
 }
 
