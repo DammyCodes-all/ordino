@@ -13,6 +13,7 @@ import { AppIcon } from "@/components/ui/app-icon";
 import { documentToSpokenText } from "@/lib/document-text";
 import {
   listenOnce,
+  requestAudioPermission,
   speakLongText,
   speechRecognitionSupported,
   speechSynthesisSupported,
@@ -88,6 +89,18 @@ export function GemmaVoicePanel() {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     try {
+      unlockSpeech();
+      const permission = await requestAudioPermission();
+      if (permission === "denied") {
+        throw new Error(
+          "Microphone permission denied. Click the lock icon in the address bar, allow microphone, then try again.",
+        );
+      }
+      if (permission === "unsupported") {
+        throw new Error(
+          "This browser cannot request audio permission. Use Chrome or Edge on localhost/HTTPS.",
+        );
+      }
       return await run();
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -103,7 +116,6 @@ export function GemmaVoicePanel() {
   }
 
   async function handleIntroAndOpen() {
-    // Must run in the click gesture before any await, or Chromium mutes TTS.
     unlockSpeech();
     setOpen(true);
     if (!speechSynthesisSupported()) {

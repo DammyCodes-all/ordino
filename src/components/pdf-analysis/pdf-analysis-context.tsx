@@ -92,7 +92,11 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null);
   const playerRef = useRef<BrowserNarrationPlayer | null>(null);
 
-  if (!playerRef.current) {
+  if (
+    !playerRef.current ||
+    typeof playerRef.current.prepareFromUserGesture !== "function"
+  ) {
+    playerRef.current?.stop();
     playerRef.current = new BrowserNarrationPlayer(setNarrationStatus);
   }
 
@@ -209,7 +213,7 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
   const playNarration = useCallback(
     (highlightId?: string | null) => {
       if (!narration) return;
-      playerRef.current?.prepareFromUserGesture();
+      playerRef.current?.prepareFromUserGesture?.();
       playerRef.current?.play(narration, highlightId);
     },
     [narration],
