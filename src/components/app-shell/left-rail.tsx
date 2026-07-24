@@ -32,7 +32,7 @@ function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex size-10 items-center justify-center rounded-[0.95rem] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`flex size-12 items-center justify-center rounded-2xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? "bg-accent-soft text-accent"
           : "text-muted hover:bg-surface-hover hover:text-foreground"
@@ -67,26 +67,26 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface/80 py-4 backdrop-blur-md">
-      <div className="mb-5 flex flex-col items-center gap-2">
-        <div className="flex size-10 items-center justify-center rounded-[1rem] bg-primary">
-          <span className="font-display text-xs text-primary-foreground">
+    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface/80 py-6 backdrop-blur-md">
+      <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-primary">
+          <span className="font-display text-sm text-primary-foreground">
             or
           </span>
         </div>
         <span
-          className={`size-2 rounded-full ${statusTone}`}
+          className={`size-2.5 rounded-full ${statusTone}`}
           title="Session status"
         />
       </div>
 
-      <nav className="flex flex-1 flex-col items-center gap-1.5">
+      <nav className="flex flex-1 flex-col items-center gap-3">
         <IconButton
           label="New document"
           onClick={newDocument}
           disabled={actionsDisabled}
         >
-          <AppIcon icon={Add01Icon} title="New document" />
+          <AppIcon icon={Add01Icon} size={20} title="New document" />
         </IconButton>
 
         <IconButton
@@ -95,7 +95,7 @@ export function LeftRail() {
           disabled={!publishedPreview}
           active={previewOpen && publishedPreview}
         >
-          <AppIcon icon={SidebarRightIcon} title="Toggle preview" />
+          <AppIcon icon={SidebarRightIcon} size={20} title="Toggle preview" />
         </IconButton>
 
         <IconButton
@@ -103,7 +103,7 @@ export function LeftRail() {
           onClick={() => setDisclosureOpen(true)}
           active={disclosureOpen || !cloudDisclosureAccepted}
         >
-          <AppIcon icon={CloudIcon} title="Cloud disclosure" />
+          <AppIcon icon={CloudIcon} size={20} title="Cloud disclosure" />
         </IconButton>
 
         <IconButton
@@ -111,11 +111,11 @@ export function LeftRail() {
           onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
           active={diagnosticsOpen || generationBlocked}
         >
-          <AppIcon icon={Alert02Icon} title="Diagnostics" />
+          <AppIcon icon={Alert02Icon} size={20} title="Diagnostics" />
         </IconButton>
       </nav>
 
-      <div className="mb-3 flex flex-col items-center gap-1.5">
+      <div className="mb-5 flex flex-col items-center gap-3">
         <IconButton
           label={
             theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
@@ -124,10 +124,11 @@ export function LeftRail() {
         >
           <AppIcon
             icon={theme === "dark" ? Sun03Icon : Moon02Icon}
+            size={20}
             title={theme === "dark" ? "Light mode" : "Dark mode"}
           />
         </IconButton>
-        <p className="brand-wordmark-solid rotate-180 text-[10px] tracking-[0.12em] [writing-mode:vertical-rl]">
+        <p className="brand-wordmark-solid rotate-180 text-xs tracking-[0.16em] [writing-mode:vertical-rl]">
           ordino
         </p>
       </div>

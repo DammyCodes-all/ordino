@@ -23,8 +23,8 @@ html[data-theme="light"] {
   --composer: #ede0d4;
   --preview-chrome: #dfc4a8;
   --preview-frame: #c4a882;
-  --rail-width: 4rem;
-  --panel-width: 20rem;
+  --rail-width: 5rem;
+  --panel-width: 22rem;
   color-scheme: light;
 }
 
@@ -50,8 +50,8 @@ html[data-theme="dark"] {
   --composer: #3d2918;
   --preview-chrome: #1f140f;
   --preview-frame: #5c3d29;
-  --rail-width: 4rem;
-  --panel-width: 20rem;
+  --rail-width: 5rem;
+  --panel-width: 22rem;
   color-scheme: dark;
 }
 
@@ -81,13 +81,13 @@ html[data-theme="dark"] {
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-comfortaa);
   --radius-none: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-2xl: 0;
-  --radius-3xl: 0;
-  --radius-4xl: 0;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
 * {
