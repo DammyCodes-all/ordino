@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-:root,
-html[data-theme="light"] {
+:root {
   --background: #efe6dc;
   --foreground: #3d2918;
   --surface: #f3ebe3;
@@ -26,33 +25,6 @@ html[data-theme="light"] {
   --rail-width: 5rem;
   --panel-width: 22rem;
   color-scheme: light;
-}
-
-html[data-theme="dark"] {
-  --background: #9c6644;
-  --foreground: #ede0d4;
-  --surface: #8a5939;
-  --surface-raised: #7a4e32;
-  --surface-hover: #b07a55;
-  --border: #c4a882;
-  --border-subtle: #7a4e32;
-  --muted: #e6ccb2;
-  --muted-dim: #d4b896;
-  --accent: #ede0d4;
-  --accent-dim: #f4ebe3;
-  --accent-soft: rgba(237, 224, 212, 0.18);
-  --primary: #ede0d4;
-  --primary-foreground: #9c6644;
-  --brand: #ede0d4;
-  --danger: #f97066;
-  --warning: #fdb022;
-  --success: #6ce9a6;
-  --composer: #8a5939;
-  --preview-chrome: #7a4e32;
-  --preview-frame: #6a432c;
-  --rail-width: 5rem;
-  --panel-width: 22rem;
-  color-scheme: dark;
 }
 
 @theme inline {
@@ -136,15 +108,6 @@ body::before {
   mix-blend-mode: soft-light;
 }
 
-html[data-theme="dark"] body {
-  background-blend-mode: soft-light;
-}
-
-html[data-theme="dark"] body::before {
-  opacity: 0.2;
-  mix-blend-mode: overlay;
-}
-
 ::selection {
   background: var(--accent-soft);
   color: var(--foreground);
@@ -181,11 +144,6 @@ textarea {
   -webkit-text-fill-color: transparent;
 }
 
-html[data-theme="dark"] .brand-wordmark,
-html[data-theme="dark"] .brand-wordmark-solid {
-  background-blend-mode: overlay;
-}
-
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -216,27 +174,7 @@ html[data-theme="dark"] .brand-wordmark-solid {
 }
 
 .glass-panel {
-  border: 1px solid color-mix(in oklab, white 18%, transparent);
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in oklab, white 18%, transparent),
-      color-mix(in oklab, white 4%, transparent) 42%,
-      color-mix(in oklab, black 18%, transparent)
-    ), color-mix(in oklab, var(--surface) 55%, transparent);
-  background-blend-mode: soft-light, normal;
-  box-shadow:
-    0 28px 80px color-mix(in oklab, black 36%, transparent),
-    0 8px 24px color-mix(in oklab, black 18%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
-  /* Keep glass panel rounded even if local utilities conflict */
-  border-radius: 32px !important;
-}
-
-html[data-theme="light"] .glass-panel {
-  border-color: color-mix(in oklab, white 40%, var(--border) 60%);
+  border: 1px solid color-mix(in oklab, white 40%, var(--border) 60%);
   background:
     linear-gradient(
       145deg,
@@ -248,4 +186,8 @@ html[data-theme="light"] .glass-panel {
   box-shadow:
     0 20px 50px color-mix(in oklab, #3d2918 18%, transparent),
     inset 0 1px 0 color-mix(in oklab, white 55%, transparent);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  /* Keep glass panel rounded even if local utilities conflict */
+  border-radius: 32px !important;
 }
