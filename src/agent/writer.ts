@@ -11,7 +11,46 @@ import { buildRevisionPrompt, type CombinedRevisionContext } from "@/review/revi
 
 const MAX_WRITER_STEPS = 20;
 
-const writerActionSchema = z.discriminatedUnion("action", [
+const WRITER_ACTION_EXAMPLES = `Output exactly one JSON object per step (no markdown fences). Valid actions:
+
+{"action":"addNode","node":{"type":"heading","level":1,"text":"Title"},"position":{"kind":"end"}}
+{"action":"addNode","node":{"type":"paragraph","text":"Body text."},"position":{"kind":"end"}}
+{"action":"addNode","node":{"type":"list","ordered":false,"items":["One","Two"]},"position":{"kind":"end"}}
+{"action":"editNode","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Updated text"}}
+{"action":"moveNode","nodeId":"node_id","position":{"kind":"before","nodeId":"other_id"}}
+{"action":"deleteNode","nodeId":"node_id"}
+{"action":"readNode","nodeId":"node_id"}
+{"action":"finalize"}
+
+Position MUST use "kind" (never "anchor"):
+- {"kind":"end"}
+- {"kind":"before","nodeId":"..."}
+- {"kind":"after","nodeId":"..."}`;
+
+/** Models often invent { anchor } instead of { kind }; coerce common mistakes. */
+function coerceWriterActionJson(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const action = { ...(value as Record<string, unknown>) };
+  const position = action.position;
+  if (!position || typeof position !== "object" || Array.isArray(position)) return action;
+  const pos = { ...(position as Record<string, unknown>) };
+  if ("kind" in pos) return action;
+
+  const anchor = typeof pos.anchor === "string" ? pos.anchor : null;
+  const nodeId =
+    (typeof pos.nodeId === "string" && pos.nodeId) ||
+    (typeof pos.referenceNodeId === "string" && pos.referenceNodeId) ||
+    null;
+
+  if (anchor === "end" || anchor === "last" || anchor === "first") {
+    action.position = { kind: "end" };
+  } else if ((anchor === "before" || anchor === "after") && nodeId) {
+    action.position = { kind: anchor, nodeId };
+  }
+  return action;
+}
+
+const writerActionSchemaRaw = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("addNode"),
     node: newDocumentNodeSchema,
@@ -41,7 +80,12 @@ const writerActionSchema = z.discriminatedUnion("action", [
   }).strict(),
 ]);
 
-type WriterAction = z.infer<typeof writerActionSchema>;
+type WriterAction = z.infer<typeof writerActionSchemaRaw>;
+
+const writerActionSchema = z.preprocess(
+  coerceWriterActionJson,
+  writerActionSchemaRaw,
+) as z.ZodType<WriterAction>;
 
 function executeAction(
   action: WriterAction,
@@ -100,13 +144,7 @@ ${outlineLines || "  (empty document)"}
 ${readBlock}
 
 [Available actions]
-Output one action at a time as JSON matching the schema below.
-- addNode: Add a new node at a position
-- editNode: Edit an existing node's content or style
-- moveNode: Reorder a node
-- deleteNode: Remove a node
-- readNode: Read the full content of a node
-- finalize: Signal that writing is complete
+${WRITER_ACTION_EXAMPLES}
 
 Write the document section by section based on the plan.${historyBlock}`;
 }
@@ -280,7 +318,16 @@ function buildWriterTools(): ToolDefinition[] {
         type: "object",
         properties: {
           node: { type: "object", description: "The node to add (type, text, level, style, etc.)" },
-          position: { type: "object", description: "Position { anchor: 'before'|'after'|'first'|'last', referenceNodeId?: string }" },
+          position: {
+            type: "object",
+            description:
+              "Position with kind: {\"kind\":\"end\"} | {\"kind\":\"before\",\"nodeId\":\"...\"} | {\"kind\":\"after\",\"nodeId\":\"...\"}",
+            properties: {
+              kind: { type: "string", enum: ["end", "before", "after"] },
+              nodeId: { type: "string" },
+            },
+            required: ["kind"],
+          },
         },
         required: ["node", "position"],
       },
@@ -305,7 +352,16 @@ function buildWriterTools(): ToolDefinition[] {
         type: "object",
         properties: {
           nodeId: { type: "string", description: "The ID of the node to move" },
-          position: { type: "object", description: "Target position { anchor, referenceNodeId }" },
+          position: {
+            type: "object",
+            description:
+              "Position with kind: {\"kind\":\"end\"} | {\"kind\":\"before\",\"nodeId\":\"...\"} | {\"kind\":\"after\",\"nodeId\":\"...\"}",
+            properties: {
+              kind: { type: "string", enum: ["end", "before", "after"] },
+              nodeId: { type: "string" },
+            },
+            required: ["kind"],
+          },
         },
         required: ["nodeId", "position"],
       },

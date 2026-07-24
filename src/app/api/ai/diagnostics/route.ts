@@ -32,8 +32,9 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (action === "check_vision") {
-      // 1x1 PNG transparent pixel
-      const transparentPng = "data:image/png;base64,iVBORw0KGgoAAAANSAhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+      // 1x1 PNG transparent pixel (valid IHDR chunk — not "NSAh")
+      const transparentPng =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
       await generateText({
         model: google(modelId),
         messages: [

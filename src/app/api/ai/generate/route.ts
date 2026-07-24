@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { generateText, jsonSchema } from "ai";
 import { aiGenerateRequestSchema } from "@/google-ai";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,18 @@ export async function POST(request: Request): Promise<Response> {
     const toolsRecord =
       tools && tools.length > 0
         ? Object.fromEntries(
-            tools.map((t) => [t.name, { description: t.description, inputSchema: t.parameters }]),
+            tools.map((t) => [
+              t.name,
+              {
+                description: t.description,
+                inputSchema: jsonSchema(
+                  (t.parameters ?? { type: "object", properties: {} }) as Record<
+                    string,
+                    unknown
+                  >,
+                ),
+              },
+            ]),
           )
         : undefined;
 
@@ -64,7 +75,10 @@ export async function POST(request: Request): Promise<Response> {
 
     return Response.json({
       text: result.text,
-      toolCalls: (result as any).toolCalls?.map((tc: any) => ({ toolName: tc.toolName, args: tc.args })),
+      toolCalls: (result as any).toolCalls?.map((tc: any) => ({
+        toolName: tc.toolName,
+        args: tc.args ?? tc.input ?? {},
+      })),
     });
   } catch (error: any) {
     const message = error?.message || String(error);
