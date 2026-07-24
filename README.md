@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ordino — AI-Driven PDF Document Authoring & Visual Review System
+
+Ordino is an agentic, cloud-assisted document authoring platform built with **Next.js 16 (Turbopack)**, **Google AI Studio (`@ai-sdk/google`)**, **React PDF**, and **Zod**.
+
+It translates high-level chat prompts and image references into structured, multi-page professional PDF documents through a closed-loop generation, rendering, deterministic validation, visual inspection, and multi-pass revision cycle.
+
+---
+
+## Key Features
+
+- 🧠 **Structured AI Orchestration**: Multi-pass turn loop using Gemini on Google AI Studio for planning, writing, visual review, and tool-driven revisions.
+- 🛠️ **6 Stateless Document Tools**: `addNode`, `editNode`, `moveNode`, `deleteNode`, `readNode`, and `finalizeDocument` operating over deterministic Zod-validated state.
+- 👁️ **Visual Review Loop**: Automated multi-page PDF rasterization and AI vision review (up to 3 iterations) identifying visual hierarchy, page overflow, and spacing issues.
+- 🛡️ **Privacy & Cloud Transfer Disclosures**: All document/PDF processing and IndexedDB persistence remain local in the browser. AI Studio calls execute exclusively via server-side same-origin route handlers (`src/app/api/ai/**`), keeping `GOOGLE_GENERATIVE_AI_API_KEY` safe and out of client bundles.
+- ⚡ **Local PDF Rendering & Export**: Fast client/server PDF generation via React PDF with instant local export capabilities.
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router, Turbopack)
+- **AI / LLM**: `@ai-sdk/google`, AI SDK 7 (`ai`)
+- **PDF Engine**: `@react-pdf/renderer`, `pdfjs-dist`
+- **Validation & Schemas**: `zod`
+- **Testing & Quality**: Vitest, Biome
+
+---
+
+## Architecture & Workstream Division
+
+Ordino enforces strict modular ownership:
+
+| Area | Path | Focus |
+|---|---|---|
+| **Contracts** | `src/contracts/**` | Shared Zod schemas, IDs, types, errors, and port interfaces |
+| **Document & PDF** | `src/document/**`, `src/pdf/**` | Document AST mutations, deterministic validation, React PDF rendering & rasterization |
+| **AI Agent & Review** | `src/agent/**`, `src/google-ai/**`, `src/review/**`, `src/app/api/ai/**` | Model gateways, prompt context builder, tool executor, visual reviewer, and orchestration loop |
+| **UI & Persistence** | `src/app/**`, `src/components/**`, `src/storage/**` | Chat interface, document previewer, IndexedDB session storage |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Prerequisites
+
+- Node.js 20+
+- `pnpm` package manager
+
+### 2. Environment Setup
+
+Copy `.env.example` to `.env.local` and provide your Google AI Studio API key:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In `.env.local`:
+```env
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_studio_api_key_here
+GOOGLE_GENERATIVE_AI_MODEL=gemma-4-31b-it
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> ⚠️ **Important**: `GOOGLE_GENERATIVE_AI_API_KEY` is a server-only environment variable. Never expose it with a `NEXT_PUBLIC_` prefix.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Install Dependencies
 
-## Learn More
+```bash
+pnpm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Run Development Server
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts & Testing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `pnpm dev`: Start Next.js development server
+- `pnpm build`: Build production web app with Turbopack & TypeScript check
+- `pnpm start`: Run production server
+- `pnpm test`: Execute test suite using Vitest
+- `pnpm lint`: Run Biome linter
+- `pnpm typecheck`: Run TypeScript compiler check
+
+---
