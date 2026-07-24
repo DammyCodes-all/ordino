@@ -15,11 +15,7 @@ export function ReferenceChips() {
           className="group flex items-center gap-1.5 border border-border bg-surface py-0.5 pr-0.5 pl-0.5"
         >
           {/* biome-ignore lint/performance/noImgElement: data-URL thumbnails */}
-          <img
-            src={image.dataUrl}
-            alt=""
-            className="size-6 object-cover"
-          />
+          <img src={image.dataUrl} alt="" className="size-6 object-cover" />
           <span className="max-w-[8rem] truncate text-xs text-muted">
             {image.name}
           </span>
