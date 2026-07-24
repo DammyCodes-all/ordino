@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { DocumentState } from "./document";
 import { documentIdSchema } from "./ids";
 import type { AppResult } from "./result";
+import { validationReportSchema } from "./validation";
 
 export const internalRenderResultSchema = z
   .object({
@@ -10,6 +11,7 @@ export const internalRenderResultSchema = z
     pdfBlob: z.instanceof(Blob),
     pageCount: z.number().int().positive(),
     renderedAt: z.string().datetime(),
+    pageTexts: z.array(z.string()).optional(),
   })
   .strict();
 
@@ -39,6 +41,7 @@ export const exportResultSchema = z
     documentVersion: z.number().int().nonnegative(),
     filename: z.string().min(1).endsWith(".pdf"),
     blob: z.instanceof(Blob),
+    validation: validationReportSchema.optional(),
   })
   .strict();
 

@@ -5,6 +5,7 @@ import type {
 } from "../contracts/rendering";
 import { renderDocumentToPdf } from "./render/headless";
 import { getCachedRender, setCachedRender } from "./cache";
+import { validatePdf } from "./validate-pdf";
 
 function slugify(input: string) {
   return input
@@ -22,25 +23,27 @@ export async function exportDocument(
 > {
   try {
     const key = `${document.documentId}:${document.version}`;
+    let render: InternalRenderResult | undefined;
+
     if (existingRender) {
       const cached = getCachedRender(key);
-      if (cached && cached.documentVersion === existingRender.documentVersion) {
-        const filename = `${slugify(document.meta.title || "document")}-v${document.version}.pdf`;
-        return {
-          success: true,
-          data: {
-            documentId: document.documentId,
-            documentVersion: document.version,
-            filename,
-            blob: cached.pdfBlob,
-          } as any,
-        };
+      if (
+        cached &&
+        cached.documentId === document.documentId &&
+        cached.documentVersion === document.version
+      ) {
+        render = cached;
       }
     }
 
-    const r = await renderDocumentToPdf(document);
-    if (!r.success) return { success: false, error: r.error };
-    setCachedRender(key, r.data);
+    if (!render) {
+      const r = await renderDocumentToPdf(document);
+      if (!r.success) return { success: false, error: r.error };
+      render = r.data;
+      setCachedRender(key, render);
+    }
+
+    const validation = await validatePdf(document, render);
 
     const filename = `${slugify(document.meta.title || "document")}-v${document.version}.pdf`;
     return {
@@ -49,7 +52,8 @@ export async function exportDocument(
         documentId: document.documentId,
         documentVersion: document.version,
         filename,
-        blob: r.data.pdfBlob,
+        blob: render.pdfBlob,
+        validation,
       } as any,
     };
   } catch (err: any) {
