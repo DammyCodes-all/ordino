@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Add01Icon,
-  Alert02Icon,
-  CloudIcon,
-  SidebarRightIcon,
-} from "@hugeicons/core-free-icons";
+import { Alert02Icon, CloudIcon, SidebarRightIcon } from "@hugeicons/core-free-icons";
 import { useSession } from "@/components/app-shell/session-context";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -42,7 +37,6 @@ function IconButton({
 
 export function LeftRail() {
   const {
-    actionsDisabled,
     turn,
     cloudDisclosureAccepted,
     generationBlocked,
@@ -50,7 +44,6 @@ export function LeftRail() {
     disclosureOpen,
     publishedPreview,
     previewOpen,
-    newDocument,
     setDisclosureOpen,
     setDiagnosticsOpen,
     setPreviewOpen,
@@ -63,7 +56,7 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="ml-5 mt-5 mb-5 flex w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
+    <aside className="flex h-full w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
       <div className="mb-8 flex flex-col items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary">
           <span className="font-display text-sm text-primary-foreground">
@@ -77,14 +70,6 @@ export function LeftRail() {
       </div>
 
       <nav className="flex flex-1 flex-col items-center gap-3">
-        <IconButton
-          label="New document"
-          onClick={newDocument}
-          disabled={actionsDisabled}
-        >
-          <AppIcon icon={Add01Icon} size={20} title="New document" />
-        </IconButton>
-
         <IconButton
           label="Toggle preview"
           onClick={() => setPreviewOpen(!previewOpen)}
