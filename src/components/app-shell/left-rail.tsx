@@ -50,11 +50,12 @@ export function LeftRail() {
     generationBlocked,
     diagnosticsOpen,
     disclosureOpen,
-    rightPanelOpen,
+    publishedPreview,
+    previewOpen,
     newDocument,
     setDisclosureOpen,
     setDiagnosticsOpen,
-    setRightPanelOpen,
+    setPreviewOpen,
   } = useSession();
 
   const statusTone = generationBlocked
@@ -95,12 +96,13 @@ export function LeftRail() {
         </IconButton>
 
         <IconButton
-          label="Document panel"
-          onClick={() => setRightPanelOpen(!rightPanelOpen)}
-          active={rightPanelOpen}
+          label="Toggle preview"
+          onClick={() => setPreviewOpen(!previewOpen)}
+          disabled={!publishedPreview}
+          active={previewOpen && publishedPreview}
         >
           <RailIcon
-            title="Document panel"
+            title="Toggle preview"
             path={
               <path
                 d="M14 4h5v16h-5M5 4h7v16H5z"

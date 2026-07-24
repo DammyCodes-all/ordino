@@ -1,0 +1,71 @@
+"use client";
+
+import { useState } from "react";
+import { useSession } from "@/components/app-shell/session-context";
+
+const TYPE_LABELS: Record<string, string> = {
+  heading: "H",
+  paragraph: "P",
+  list: "L",
+  table: "T",
+  quote: "Q",
+  callout: "C",
+  divider: "—",
+  page_break: "⎘",
+};
+
+export function ChatOutline() {
+  const { outline, document, publishedPreview, previewOpen, setPreviewOpen } =
+    useSession();
+  const [expanded, setExpanded] = useState(true);
+
+  if (outline.length === 0) return null;
+
+  return (
+    <div className="mx-auto mb-2 w-full max-w-2xl animate-fade-up">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface/70">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          >
+            <span className="text-muted-dim">{expanded ? "▾" : "▸"}</span>
+            <span className="truncate text-xs font-medium text-foreground">
+              Outline · {document.meta.title}
+            </span>
+            <span className="shrink-0 text-[11px] text-muted-dim">
+              {outline.length} blocks
+            </span>
+          </button>
+          {publishedPreview ? (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(!previewOpen)}
+              className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] text-muted transition-colors hover:text-foreground"
+            >
+              {previewOpen ? "Hide preview" : "Open preview"}
+            </button>
+          ) : null}
+        </div>
+        {expanded ? (
+          <div className="max-h-40 space-y-0.5 overflow-y-auto border-t border-border-subtle px-2 py-2">
+            {outline.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs text-muted"
+              >
+                <span className="mt-0.5 w-4 shrink-0 text-center font-mono text-[10px] text-accent-dim">
+                  {TYPE_LABELS[item.type] ?? "·"}
+                </span>
+                <span className="leading-snug text-foreground/80">
+                  {item.preview}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

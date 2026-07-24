@@ -56,8 +56,6 @@ const MOCK_TURN_STAGES: WorkflowStage[] = [
   "ready",
 ];
 
-type MainView = "chat" | "preview";
-
 type SessionContextValue = {
   document: DocumentState;
   messages: ConversationMessage[];
@@ -70,15 +68,13 @@ type SessionContextValue = {
   cloudDisclosureAccepted: boolean;
   disclosureOpen: boolean;
   diagnosticsOpen: boolean;
-  rightPanelOpen: boolean;
-  mainView: MainView;
+  previewOpen: boolean;
   health: GoogleAIHealthResponse | null;
   diagnosticChecks: DiagnosticCheck[];
   generationBlocked: boolean;
   stageLabel: string;
   actionsDisabled: boolean;
-  setRightPanelOpen: (open: boolean) => void;
-  setMainView: (view: MainView) => void;
+  setPreviewOpen: (open: boolean) => void;
   setDisclosureOpen: (open: boolean) => void;
   setDiagnosticsOpen: (open: boolean) => void;
   acceptDisclosure: () => void;
@@ -139,8 +135,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [cloudDisclosureAccepted, setCloudDisclosureAccepted] = useState(false);
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
-  const [mainView, setMainView] = useState<MainView>("chat");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
   const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
     {
@@ -315,8 +310,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ]);
       setWorkflowEvents([]);
       setTurn({ running: true, stage: "planning", reviewIteration: 0 });
-      setMainView("chat");
-      setRightPanelOpen(true);
+      // Keep an existing artifact open during revisions (Claude-style).
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -331,7 +325,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const nextDocument = createMockDocumentFromPrompt(trimmed);
         setDocument(nextDocument);
         setPublishedPreview(true);
-        setMainView("preview");
+        setPreviewOpen(true);
 
         const assistantMessage: ConversationMessage = {
           id: createId("message"),
@@ -438,7 +432,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCheckpoints([]);
     setWorkflowEvents([]);
     setPublishedPreview(false);
-    setMainView("chat");
+    setPreviewOpen(false);
     setTurn({ running: false, stage: "idle", reviewIteration: 0 });
   }, [actionsDisabled]);
 
@@ -455,15 +449,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cloudDisclosureAccepted,
       disclosureOpen,
       diagnosticsOpen,
-      rightPanelOpen,
-      mainView,
+      previewOpen,
       health,
       diagnosticChecks,
       generationBlocked,
       stageLabel,
       actionsDisabled,
-      setRightPanelOpen,
-      setMainView,
+      setPreviewOpen,
       setDisclosureOpen,
       setDiagnosticsOpen,
       acceptDisclosure,
@@ -488,8 +480,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cloudDisclosureAccepted,
       disclosureOpen,
       diagnosticsOpen,
-      rightPanelOpen,
-      mainView,
+      previewOpen,
       health,
       diagnosticChecks,
       generationBlocked,
