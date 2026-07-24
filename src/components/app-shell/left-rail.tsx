@@ -32,7 +32,7 @@ function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex size-9 items-center justify-center rounded-[0.85rem] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`flex size-10 items-center justify-center rounded-[0.95rem] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? "bg-accent-soft text-accent"
           : "text-muted hover:bg-surface-hover hover:text-foreground"
@@ -67,20 +67,20 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface/80 py-3 backdrop-blur-md">
-      <div className="mb-4 flex flex-col items-center gap-1.5">
-        <div className="flex size-9 items-center justify-center rounded-[0.9rem] bg-primary">
-          <span className="font-display text-[11px] text-primary-foreground">
+    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface/80 py-4 backdrop-blur-md">
+      <div className="mb-5 flex flex-col items-center gap-2">
+        <div className="flex size-10 items-center justify-center rounded-[1rem] bg-primary">
+          <span className="font-display text-xs text-primary-foreground">
             or
           </span>
         </div>
         <span
-          className={`size-1.5 rounded-full ${statusTone}`}
+          className={`size-2 rounded-full ${statusTone}`}
           title="Session status"
         />
       </div>
 
-      <nav className="flex flex-1 flex-col items-center gap-0.5">
+      <nav className="flex flex-1 flex-col items-center gap-1.5">
         <IconButton
           label="New document"
           onClick={newDocument}

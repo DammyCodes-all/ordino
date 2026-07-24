@@ -26,7 +26,7 @@ export function PreviewSidebar() {
             key="preview-backdrop"
             type="button"
             aria-label="Close preview overlay"
-            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] md:hidden"
+            className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[3px] md:bg-transparent md:backdrop-blur-none md:pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -35,23 +35,23 @@ export function PreviewSidebar() {
           />
           <motion.aside
             key="preview-panel"
-            initial={{ opacity: 0, x: 28, filter: "blur(8px)" }}
-            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, x: 20, filter: "blur(6px)" }}
+            initial={{ opacity: 0, x: 36, scale: 0.98, filter: "blur(10px)" }}
+            animate={{ opacity: 1, x: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, x: 24, scale: 0.98, filter: "blur(8px)" }}
             transition={{
               type: "spring",
-              stiffness: 320,
-              damping: 28,
-              mass: 0.85,
+              stiffness: 280,
+              damping: 26,
+              mass: 0.9,
             }}
-            className="glass-panel pointer-events-auto absolute inset-y-3 right-3 z-40 flex w-[min(calc(100%-1.5rem),210mm)] flex-col overflow-hidden rounded-[1.5rem] md:w-[210mm]"
+            className="glass-panel fixed top-5 right-5 bottom-5 z-50 flex w-[min(calc(100vw-2.5rem),210mm)] flex-col overflow-hidden rounded-[1.75rem]"
           >
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
+            <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/10 px-4">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium tracking-tight">
                   Preview
                 </p>
-                <p className="truncate text-[10px] text-muted-dim">
+                <p className="truncate text-xs text-muted-dim">
                   {document.meta.title}
                   {turn.running ? " · previous version while revising" : ""}
                 </p>
@@ -60,21 +60,21 @@ export function PreviewSidebar() {
                 type="button"
                 disabled={turn.running}
                 onClick={exportPdf}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs text-foreground backdrop-blur-md transition-colors hover:bg-white/15 disabled:opacity-35"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm text-foreground backdrop-blur-md transition-colors hover:bg-white/15 disabled:opacity-35"
               >
-                <AppIcon icon={FileExportIcon} size={14} />
+                <AppIcon icon={FileExportIcon} size={16} />
                 Export
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewOpen(false)}
-                className="flex size-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-muted transition-colors hover:bg-white/15 hover:text-foreground"
+                className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-muted transition-colors hover:bg-white/15 hover:text-foreground"
                 aria-label="Close preview"
               >
-                <AppIcon icon={Cancel01Icon} size={15} title="Close preview" />
+                <AppIcon icon={Cancel01Icon} size={16} title="Close preview" />
               </button>
             </header>
-            <div className="min-h-0 flex-1 overflow-hidden bg-black/20">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-b-[1.75rem] bg-black/15">
               <PdfPreview variant="main" />
             </div>
           </motion.aside>

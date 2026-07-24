@@ -11,11 +11,12 @@ function ShellLayout() {
   return (
     <div className="relative flex h-dvh overflow-hidden bg-background">
       <LeftRail />
-      <div className="relative flex min-w-0 flex-1 flex-row">
+      <div className="relative flex min-w-0 flex-1 flex-row overflow-hidden">
         <ChatPanel />
-        <PreviewSidebar />
         <DiagnosticsStrip />
       </div>
+      {/* Fixed floating panel — outside overflow clip so it stands alone */}
+      <PreviewSidebar />
       <CloudDisclosure />
     </div>
   );

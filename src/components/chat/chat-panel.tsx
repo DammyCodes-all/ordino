@@ -43,7 +43,7 @@ export function ChatPanel() {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }, [draft]);
 
   const empty = messages.length === 0;
@@ -69,28 +69,28 @@ export function ChatPanel() {
   return (
     <section
       className={`relative flex h-full min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-out ${
-        chatNarrow ? "md:pr-[calc(210mm+1.5rem)]" : ""
+        chatNarrow ? "md:pr-[calc(210mm+2.5rem)]" : ""
       }`}
     >
-      <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border-subtle px-5 sm:px-6">
         <div className="min-w-0">
-          <p className="brand-wordmark-solid truncate text-lg">ordino</p>
-          <p className="truncate text-[11px] text-muted-dim">
+          <p className="brand-wordmark-solid truncate text-xl">ordino</p>
+          <p className="truncate text-xs text-muted-dim">
             {chatNarrow ? "Chat · preview open" : "Chat-only document studio"}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-2">
           {publishedPreview ? (
             <button
               type="button"
               onClick={() => setPreviewOpen(!previewOpen)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm transition-colors ${
                 previewOpen
                   ? "border-accent-dim bg-accent-soft text-accent"
                   : "border-border text-muted hover:text-foreground"
               }`}
             >
-              <AppIcon icon={SidebarRightIcon} size={13} />
+              <AppIcon icon={SidebarRightIcon} size={15} />
               {previewOpen ? "Preview" : "Open preview"}
             </button>
           ) : null}
@@ -98,31 +98,27 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={cancelTurn}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-danger hover:text-danger"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-sm text-muted transition-colors hover:border-danger hover:text-danger"
             >
-              <AppIcon icon={Cancel01Icon} size={13} />
+              <AppIcon icon={Cancel01Icon} size={15} />
               Cancel
             </button>
           ) : null}
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-6">
         {empty ? (
-          <div className="mx-auto flex min-h-[calc(100%-2rem)] max-w-2xl flex-col items-center justify-center gap-3 py-12 text-center animate-fade-up">
+          <div className="mx-auto flex min-h-[calc(100%-2rem)] max-w-2xl flex-col items-center justify-center gap-5 py-16 text-center animate-fade-up">
             <p className="brand-wordmark text-5xl sm:text-6xl">ordino</p>
-            <h1
-              className={`mt-1 font-medium tracking-tight text-foreground ${
-                chatNarrow ? "text-xl" : "max-w-xl text-2xl sm:text-3xl"
-              }`}
-            >
+            <h1 className="max-w-xl text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
               What document should we create?
             </h1>
-            <p className="max-w-md text-sm leading-relaxed text-muted">
-              Prompt in chat. When a turn finishes, the preview opens beside you
-              — Claude-style — and the outline stays in this thread.
+            <p className="max-w-md text-base leading-relaxed text-muted">
+              Prompt in chat. When a turn finishes, the preview opens as a
+              floating panel beside you — and the outline stays in this thread.
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
               {[
                 "One-page product brief for investors",
                 "Formal meeting agenda with table",
@@ -133,7 +129,7 @@ export function ChatPanel() {
                   type="button"
                   disabled={actionsDisabled || generationBlocked}
                   onClick={() => setDraft(suggestion)}
-                  className="border border-border bg-surface px-2.5 py-1 text-left text-xs text-muted transition-colors hover:border-accent-dim hover:text-foreground disabled:opacity-40"
+                  className="rounded-full border border-border bg-surface px-4 py-2 text-left text-sm text-muted transition-colors hover:border-accent-dim hover:text-foreground disabled:opacity-40"
                 >
                   {suggestion}
                 </button>
@@ -142,7 +138,7 @@ export function ChatPanel() {
           </div>
         ) : (
           <div
-            className={`mx-auto flex flex-col gap-4 py-5 ${
+            className={`mx-auto flex flex-col gap-7 py-10 ${
               chatNarrow ? "max-w-none" : "max-w-2xl"
             }`}
           >
@@ -152,16 +148,16 @@ export function ChatPanel() {
                 className={`animate-fade-up ${
                   message.role === "user"
                     ? chatNarrow
-                      ? "ml-3"
-                      : "ml-6 sm:ml-12"
-                    : "mr-1"
+                      ? "ml-6"
+                      : "ml-10 sm:ml-16"
+                    : "mr-2"
                 }`}
               >
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-dim">
+                <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim">
                   {message.role === "user" ? "You" : "Ordino"}
                 </p>
                 <div
-                  className={`px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap ${
                     message.role === "user"
                       ? "bg-surface-raised text-foreground"
                       : "bg-transparent text-foreground/95"
@@ -172,11 +168,11 @@ export function ChatPanel() {
               </article>
             ))}
             {turn.running ? (
-              <div className="animate-fade-up border border-border bg-surface/80 p-3">
-                <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-dim">
+              <div className="animate-fade-up rounded-2xl border border-border bg-surface/80 p-5">
+                <p className="mb-3 text-xs uppercase tracking-wider text-muted-dim">
                   Ordino · workflow
                 </p>
-                <StatusPanel compact />
+                <StatusPanel />
               </div>
             ) : null}
             <div ref={bottomRef} />
@@ -184,7 +180,7 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border-subtle bg-background/85 px-3 py-2.5 backdrop-blur-md sm:px-4">
+      <div className="shrink-0 border-t border-border-subtle bg-background/85 px-5 py-4 backdrop-blur-md sm:px-6">
         <ChatOutline />
         <form
           onSubmit={(event) => void handleSubmit(event)}
@@ -192,11 +188,11 @@ export function ChatPanel() {
         >
           <ReferenceChips />
           {generationBlocked ? (
-            <p className="mb-1.5 text-xs text-danger">
+            <p className="mb-2 text-sm text-danger">
               Generation disabled until Google AI Studio health checks pass.
             </p>
           ) : null}
-          <div className="flex items-end gap-1.5 border border-border bg-composer px-2 py-1.5 focus-within:border-accent">
+          <div className="flex items-end gap-2 rounded-2xl border border-border bg-composer px-3 py-2.5 focus-within:border-accent">
             <input
               ref={fileRef}
               type="file"
@@ -213,11 +209,11 @@ export function ChatPanel() {
               title="Attach reference image"
               disabled={actionsDisabled}
               onClick={() => fileRef.current?.click()}
-              className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+              className="mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
             >
               <AppIcon
                 icon={AttachmentIcon}
-                size={16}
+                size={18}
                 title="Attach reference image"
               />
             </button>
@@ -229,15 +225,15 @@ export function ChatPanel() {
               rows={1}
               placeholder="Ask Ordino to draft or revise…"
               disabled={actionsDisabled || generationBlocked}
-              className="max-h-[160px] min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-sm leading-5 text-foreground outline-none placeholder:text-muted-dim disabled:opacity-50"
+              className="max-h-[180px] min-h-[42px] flex-1 resize-none bg-transparent py-2 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-dim disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={actionsDisabled || generationBlocked || !draft.trim()}
-              className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
+              className="mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
               aria-label="Send"
             >
-              <AppIcon icon={ArrowRight01Icon} size={14} title="Send" />
+              <AppIcon icon={ArrowRight01Icon} size={16} title="Send" />
             </button>
           </div>
         </form>

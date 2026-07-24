@@ -23,7 +23,7 @@ html[data-theme="light"] {
   --composer: #ede0d4;
   --preview-chrome: #dfc4a8;
   --preview-frame: #c4a882;
-  --rail-width: 3.25rem;
+  --rail-width: 4rem;
   --panel-width: 20rem;
   color-scheme: light;
 }
@@ -50,7 +50,7 @@ html[data-theme="dark"] {
   --composer: #3d2918;
   --preview-chrome: #1f140f;
   --preview-frame: #5c3d29;
-  --rail-width: 3.25rem;
+  --rail-width: 4rem;
   --panel-width: 20rem;
   color-scheme: dark;
 }
@@ -182,10 +182,12 @@ textarea {
       color-mix(in oklab, white 18%, transparent),
       color-mix(in oklab, white 4%, transparent) 42%,
       color-mix(in oklab, black 18%, transparent)
-    ), color-mix(in oklab, var(--surface) 55%, transparent);
+    ),
+    color-mix(in oklab, var(--surface) 55%, transparent);
   background-blend-mode: soft-light, normal;
   box-shadow:
-    0 24px 60px color-mix(in oklab, black 28%, transparent),
+    0 28px 80px color-mix(in oklab, black 36%, transparent),
+    0 8px 24px color-mix(in oklab, black 18%, transparent),
     inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
   backdrop-filter: blur(22px) saturate(1.35);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
