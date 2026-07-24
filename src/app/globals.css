@@ -22,9 +22,20 @@
   --composer: #f3ebe3;
   --preview-chrome: #e6d5c4;
   --preview-frame: #c4a882;
-  --rail-width: 5rem;
+  --rail-width: 4.25rem;
   --panel-width: 22rem;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --mobile-nav-height: 4.25rem;
   color-scheme: light;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --rail-width: 5rem;
+  }
 }
 
 @theme inline {
@@ -66,6 +77,33 @@
   box-sizing: border-box;
 }
 
+/* Hide scrollbars everywhere; content can still scroll where overflow allows */
+*,
+*::before,
+*::after {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Legacy Edge/IE */
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome, Safari, Opera */
+}
+
+html,
+body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /*
  * Paper grain from the portfolio sample:
  * soft fiber noise on the field, heavier stipple punched through ink.
@@ -93,6 +131,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   margin: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Film grain overlay — same paper tooth across the whole UI */
@@ -189,5 +230,5 @@ textarea {
   backdrop-filter: blur(22px) saturate(1.35);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
   /* Keep glass panel rounded even if local utilities conflict */
-  border-radius: 32px !important;
+  border-radius: var(--glass-radius, 32px) !important;
 }

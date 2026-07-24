@@ -109,6 +109,7 @@ type SessionContextValue = {
   turn: AgentTurnState;
   outline: OutlineItem[];
   publishedPreview: boolean;
+  publishedRender: InternalRenderResult | null;
   previewUrl: string | null;
   validation: ValidationReport | null;
   visualReview: VisualReviewResult | null;
@@ -764,6 +765,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       turn,
       outline,
       publishedPreview,
+      publishedRender,
       previewUrl,
       validation,
       visualReview,
@@ -801,6 +803,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       turn,
       outline,
       publishedPreview,
+      publishedRender,
       previewUrl,
       validation,
       visualReview,
