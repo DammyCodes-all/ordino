@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { usePdfAnalysis } from "@/components/pdf-analysis/pdf-analysis-context";
-import { unlockSpeech } from "@/lib/speech";
+import {
+  requestAudioPermission,
+  unlockSpeech,
+} from "@/lib/speech";
 
 export function NarrationControls() {
   const {
@@ -13,8 +17,34 @@ export function NarrationControls() {
     resumeNarration,
     stopNarration,
   } = usePdfAnalysis();
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
-  const disabled = !narration || narration.segments.length === 0;
+  const disabled = !narration || narration.segments.length === 0 || asking;
+
+  async function withPermission(run: () => void) {
+    setPermissionError(null);
+    setAsking(true);
+    unlockSpeech();
+    try {
+      const state = await requestAudioPermission();
+      if (state === "denied") {
+        setPermissionError(
+          "Microphone permission is blocked. Allow mic access for this site in the browser address bar, then try again.",
+        );
+        return;
+      }
+      if (state === "unsupported") {
+        setPermissionError(
+          "This browser cannot request audio permission. Try Chrome or Edge on localhost/HTTPS.",
+        );
+        return;
+      }
+      run();
+    } finally {
+      setAsking(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -23,19 +53,17 @@ export function NarrationControls() {
           type="button"
           disabled={disabled}
           onClick={() => {
-            unlockSpeech();
-            playNarration(null);
+            void withPermission(() => playNarration(null));
           }}
           className="rounded-full border border-border px-3 py-1.5 text-sm disabled:opacity-40"
         >
-          Play all
+          {asking ? "Allow mic…" : "Play all"}
         </button>
         <button
           type="button"
           disabled={disabled || !selectedHighlightId}
           onClick={() => {
-            unlockSpeech();
-            playNarration(selectedHighlightId);
+            void withPermission(() => playNarration(selectedHighlightId));
           }}
           className="rounded-full border border-border px-3 py-1.5 text-sm disabled:opacity-40"
         >
@@ -72,12 +100,17 @@ export function NarrationControls() {
         </button>
         <span className="text-xs text-muted-dim">{narrationStatus}</span>
       </div>
+      <p className="text-[11px] text-muted-dim">
+        First play asks for microphone permission so the browser allows voice
+        features on this site.
+      </p>
+      {permissionError ? (
+        <p className="text-xs text-danger">{permissionError}</p>
+      ) : null}
       {narrationStatus === "unavailable" ? (
         <p className="text-xs text-danger">
-          Browser speech is blocked or has no system voices. Unmute this tab,
-          allow sound, and on Linux install{" "}
-          <code className="font-mono">speech-dispatcher</code> /{" "}
-          <code className="font-mono">espeak-ng</code>, then retry in Chrome.
+          Browser speech returned synthesis-failed. Unmute this tab, fully quit
+          and reopen Chrome/Edge, then try Play again.
         </p>
       ) : null}
     </div>

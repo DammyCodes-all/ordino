@@ -35,6 +35,45 @@ export function speechSynthesisSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
+export type AudioPermissionState = "granted" | "denied" | "prompt" | "unsupported";
+
+/**
+ * Triggers the browser permission prompt for microphone/audio.
+ * Call from a click handler. Stops tracks immediately after grant —
+ * we only need the permission gesture for voice features.
+ */
+export async function requestAudioPermission(): Promise<AudioPermissionState> {
+  if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    return "unsupported";
+  }
+
+  try {
+    if (navigator.permissions?.query) {
+      try {
+        const status = await navigator.permissions.query({
+          name: "microphone" as PermissionName,
+        });
+        if (status.state === "granted") return "granted";
+        if (status.state === "denied") return "denied";
+      } catch {
+        // permissions.query(microphone) is unsupported in some browsers
+      }
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+    return "granted";
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return "denied";
+    }
+    return "denied";
+  }
+}
+
 /** Chrome loads voices asynchronously; wait until at least one is available. */
 export function waitForVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]> {
   if (!speechSynthesisSupported()) return Promise.resolve([]);
@@ -57,22 +96,13 @@ export function waitForVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]>
 
 /**
  * Call synchronously from a click/tap handler before any await.
- * Unlocks speechSynthesis after async work (API calls) in Chromium.
+ * Unlocks speechSynthesis after async work in Chromium.
  */
 export function unlockSpeech(): void {
   if (!speechSynthesisSupported()) return;
   try {
     window.speechSynthesis.resume();
-    // Prime the voice list.
     window.speechSynthesis.getVoices();
-    // Speak a near-silent token in the user gesture; do not cancel it.
-    const warm = new SpeechSynthesisUtterance(".");
-    warm.volume = 0.01;
-    warm.rate = 2;
-    warm.pitch = 1;
-    warm.onend = () => undefined;
-    warm.onerror = () => undefined;
-    window.speechSynthesis.speak(warm);
   } catch {
     // ignore
   }
