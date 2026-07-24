@@ -62,10 +62,16 @@ export function LeftRail() {
   return (
     <aside className="flex h-full w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
       <div className="mb-8 flex flex-col items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-primary">
-          <span className="font-display text-sm text-primary-foreground">
-            or
-          </span>
+        <div className="flex size-12 items-center justify-center overflow-hidden rounded-2xl shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/ordino-logo.png"
+            alt="Ordino"
+            width={48}
+            height={48}
+            className="size-full object-cover"
+            draggable={false}
+          />
         </div>
         <span
           className={`size-2.5 rounded-full ${statusTone}`}
@@ -83,21 +89,6 @@ export function LeftRail() {
           <AppIcon icon={SidebarRightIcon} size={20} title="Toggle preview" />
         </IconButton>
 
-        <IconButton
-          label="Cloud disclosure"
-          onClick={() => setDisclosureOpen(true)}
-          active={disclosureOpen || !cloudDisclosureAccepted}
-        >
-          <AppIcon icon={CloudIcon} size={20} title="Cloud disclosure" />
-        </IconButton>
-
-        <IconButton
-          label="Diagnostics"
-          onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
-          active={diagnosticsOpen || generationBlocked}
-        >
-          <AppIcon icon={Alert02Icon} size={20} title="Diagnostics" />
-        </IconButton>
       </nav>
 
       <div className="mb-5 flex flex-col items-center gap-3">
