@@ -7,6 +7,8 @@ import { SessionProvider } from "@/components/app-shell/session-context";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { CloudDisclosure } from "@/components/diagnostics/cloud-disclosure";
 import { DiagnosticsStrip } from "@/components/diagnostics/diagnostics-strip";
+import { PdfAnalysisProvider } from "@/components/pdf-analysis/pdf-analysis-context";
+import { PdfAnalysisWorkspace } from "@/components/pdf-analysis/pdf-analysis-workspace";
 import { PreviewSidebar } from "@/components/pdf-preview/preview-sidebar";
 
 function ShellLayout() {
@@ -27,9 +29,9 @@ function ShellLayout() {
         <ChatPanel />
         <DiagnosticsStrip />
       </div>
-      {/* Fixed floating panel — outside overflow clip so it stands alone */}
       <PreviewSidebar />
       <CloudDisclosure />
+      <PdfAnalysisWorkspace />
     </div>
   );
 }
@@ -37,7 +39,9 @@ function ShellLayout() {
 export function AppShell() {
   return (
     <SessionProvider>
-      <ShellLayout />
+      <PdfAnalysisProvider>
+        <ShellLayout />
+      </PdfAnalysisProvider>
     </SessionProvider>
   );
 }

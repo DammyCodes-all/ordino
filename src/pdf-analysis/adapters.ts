@@ -16,7 +16,10 @@ function nodeText(node: DocumentState["nodes"][number]): string {
     case "list":
       return node.items.join(" ");
     case "table":
-      return [...node.headers, ...node.rows.flat()].join(" ");
+      return [
+        ...node.columns.map((column) => column.header),
+        ...node.rows.flat(),
+      ].join(" ");
     default:
       return "";
   }
@@ -44,7 +47,10 @@ export function buildGeneratedDocumentContext(
 }
 
 export function fromUploadedPdf(file: File): AnalyzablePdfInput {
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+  if (
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
     throw new Error("UNSUPPORTED_FILE_TYPE");
   }
 

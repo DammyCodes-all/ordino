@@ -1,13 +1,14 @@
+"use client";
+
 import {
   extractText,
   extractTextItems,
   getDocumentProxy,
-  renderPageAsImage,
 } from "unpdf";
 import type {
+  AnalyzablePdfInput,
   AnalysisDocument,
   AnalysisPage,
-  AnalyzablePdfInput,
   AppResult,
   PdfTextSpan,
 } from "@/contracts";
@@ -15,20 +16,6 @@ import { createErrorResult, createSuccessResult } from "@/google-ai";
 import { createId } from "@/lib/document-factory";
 
 const RENDER_SCALE = 2;
-
-function arrayBufferToPngDataUrl(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  const base64 =
-    typeof btoa === "function"
-      ? btoa(binary)
-      : Buffer.from(bytes).toString("base64");
-  return `data:image/png;base64,${base64}`;
-}
 
 function normalizeSpans(
   pageNumber: number,
@@ -73,11 +60,7 @@ function normalizeSpans(
   return spans;
 }
 
-/**
- * Local PDF ingest with `unpdf` (text + spans) and page image rendering.
- * Browser-safe: uses DOM canvas; Node can still call this if a canvas polyfill exists,
- * or prefer the API ingest route for server-side runs.
- */
+/** Browser-safe ingest: `unpdf` for text/spans, DOM canvas for page images. */
 export async function ingestAnalyzablePdf(
   input: AnalyzablePdfInput,
   signal?: AbortSignal,
@@ -128,63 +111,37 @@ export async function ingestAnalyzablePdf(
       }
 
       const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 1 });
-      const widthPx = Math.ceil(viewport.width * RENDER_SCALE);
-      const heightPx = Math.ceil(viewport.height * RENDER_SCALE);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scaled = page.getViewport({ scale: RENDER_SCALE });
+      const widthPx = Math.ceil(scaled.width);
+      const heightPx = Math.ceil(scaled.height);
 
-      let dataUrl: string;
-      try {
-        const isNode = typeof document === "undefined";
-        const image = await renderPageAsImage(pdf, pageNumber, {
-          scale: RENDER_SCALE,
-          toDataURL: true,
-          ...(isNode ? { canvasImport: () => import("@napi-rs/canvas") } : {}),
-        });
-        dataUrl =
-          typeof image === "string" ? image : arrayBufferToPngDataUrl(image);
-        if (!dataUrl.startsWith("data:")) {
-          dataUrl = `data:image/png;base64,${dataUrl}`;
-        }
-      } catch (error) {
-        // Browser fallback: render via PDF.js + DOM canvas.
-        if (typeof document !== "undefined") {
-          const scaled = page.getViewport({ scale: RENDER_SCALE });
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.ceil(scaled.width);
-          canvas.height = Math.ceil(scaled.height);
-          const context = canvas.getContext("2d");
-          if (!context) {
-            return createErrorResult(
-              "PAGE_RENDER_FAILED",
-              `Failed to render page ${pageNumber}.`,
-              true,
-            );
-          }
-          await page.render({
-            canvasContext: context,
-            viewport: scaled,
-            canvas,
-          }).promise;
-          dataUrl = canvas.toDataURL("image/png");
-        } else {
-          return createErrorResult(
-            "PAGE_RENDER_FAILED",
-            `Failed to render page ${pageNumber}.`,
-            true,
-            {
-              reason: error instanceof Error ? error.message : String(error),
-            },
-          );
-        }
+      const canvas = document.createElement("canvas");
+      canvas.width = widthPx;
+      canvas.height = heightPx;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return createErrorResult(
+          "PAGE_RENDER_FAILED",
+          `Failed to render page ${pageNumber}.`,
+          true,
+        );
       }
 
+      await page.render({
+        canvasContext: context,
+        viewport: scaled,
+        canvas,
+      }).promise;
+
+      const dataUrl = canvas.toDataURL("image/png");
       const rawText = textByPage.text[pageNumber - 1] ?? "";
       const pageItems = itemsByPage.items[pageNumber - 1] ?? [];
       const textSpans = normalizeSpans(
         pageNumber,
         pageItems,
-        viewport.width,
-        viewport.height,
+        baseViewport.width,
+        baseViewport.height,
         widthPx,
         heightPx,
       );

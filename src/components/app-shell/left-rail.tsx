@@ -3,9 +3,11 @@
 import {
   Alert02Icon,
   CloudIcon,
+  File01Icon,
   SidebarRightIcon,
 } from "@hugeicons/core-free-icons";
 import { useSession } from "@/components/app-shell/session-context";
+import { usePdfAnalysis } from "@/components/pdf-analysis/pdf-analysis-context";
 import { AppIcon } from "@/components/ui/app-icon";
 
 function IconButton({
@@ -52,6 +54,7 @@ export function LeftRail() {
     setDiagnosticsOpen,
     setPreviewOpen,
   } = useSession();
+  const { open: analysisOpen, setOpen: setAnalysisOpen } = usePdfAnalysis();
 
   const statusTone = generationBlocked
     ? "bg-danger"
@@ -67,6 +70,10 @@ export function LeftRail() {
             or
           </span>
         </div>
+        <span
+          className={`size-2.5 rounded-full ${statusTone}`}
+          title="Session status"
+        />
       </div>
 
       <nav className="flex flex-1 flex-col items-center gap-3">
@@ -77,6 +84,30 @@ export function LeftRail() {
           active={previewOpen && publishedPreview}
         >
           <AppIcon icon={SidebarRightIcon} size={20} title="Toggle preview" />
+        </IconButton>
+
+        <IconButton
+          label="Analyze PDF"
+          onClick={() => setAnalysisOpen(true)}
+          active={analysisOpen}
+        >
+          <AppIcon icon={File01Icon} size={20} title="Analyze PDF" />
+        </IconButton>
+
+        <IconButton
+          label="Cloud disclosure"
+          onClick={() => setDisclosureOpen(true)}
+          active={disclosureOpen || !cloudDisclosureAccepted}
+        >
+          <AppIcon icon={CloudIcon} size={20} title="Cloud disclosure" />
+        </IconButton>
+
+        <IconButton
+          label="Diagnostics"
+          onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
+          active={diagnosticsOpen || generationBlocked}
+        >
+          <AppIcon icon={Alert02Icon} size={20} title="Diagnostics" />
         </IconButton>
       </nav>
 
