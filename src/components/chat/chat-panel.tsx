@@ -13,6 +13,7 @@ import { ReferenceChips } from "@/components/reference-images/reference-chips";
 import { ReviewFindings } from "@/components/review/review-findings";
 import { StatusPanel } from "@/components/status-panel/status-panel";
 import { AppIcon } from "@/components/ui/app-icon";
+import { GemmaVoicePanel } from "@/components/voice/gemma-voice-panel";
 
 export function ChatPanel() {
   const {
@@ -182,6 +183,7 @@ export function ChatPanel() {
       </div>
 
       <div className="shrink-0 px-6 py-5 sm:px-8">
+        <GemmaVoicePanel />
         <ReviewFindings />
         <ChatOutline />
         <form
