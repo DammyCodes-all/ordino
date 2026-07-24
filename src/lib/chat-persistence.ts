@@ -62,6 +62,9 @@ function getDb() {
           db.createObjectStore("workspace");
         }
       },
+    }).catch((err) => {
+      dbPromise = null;
+      throw err;
     });
   }
   return dbPromise;
