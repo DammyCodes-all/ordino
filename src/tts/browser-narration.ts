@@ -1,7 +1,7 @@
 "use client";
 
 import type { NarrationPlaylist, NarrationSegment } from "@/contracts";
-import { speakText, stopSpeaking } from "@/lib/speech";
+import { speakText, stopSpeaking, pauseMediaPlayback, resumeMediaPlayback } from "@/lib/speech";
 
 export type NarrationStatus = "idle" | "playing" | "paused" | "unavailable";
 
@@ -126,8 +126,7 @@ export class BrowserNarrationPlayer {
   pause() {
     if (this.status !== "playing") return;
     this.paused = true;
-    // Pause browser synthesis if active; server audio continues per-segment.
-    if ("speechSynthesis" in window) window.speechSynthesis.pause();
+    pauseMediaPlayback();
     this.setStatus("paused");
   }
 
@@ -136,7 +135,7 @@ export class BrowserNarrationPlayer {
     this.resumePause?.();
     this.resumePause = null;
     this.pauseGate = null;
-    if ("speechSynthesis" in window) window.speechSynthesis.resume();
+    resumeMediaPlayback();
     if (this.status === "paused") this.setStatus("playing");
   }
 

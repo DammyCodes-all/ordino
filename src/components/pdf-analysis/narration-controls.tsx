@@ -70,11 +70,15 @@ export function NarrationControls() {
         >
           Stop
         </button>
-        <span className="text-xs text-muted-dim">{narrationStatus}</span>
+        <span className="text-xs text-muted-dim">
+          {narrationStatus === "playing"
+            ? "playing (server audio)"
+            : narrationStatus}
+        </span>
       </div>
       {narrationStatus === "unavailable" ? (
         <p className="text-xs text-danger">
-          Could not play audio. Unmute this tab and try Play again.
+          Could not play audio. Unmute this tab and click Play all again.
         </p>
       ) : null}
     </div>
