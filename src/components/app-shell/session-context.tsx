@@ -274,6 +274,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null);
   const documentRef = useRef(document);
   const messagesRef = useRef(messages);
+  const turnRef = useRef(turn);
   const referenceImagesRef = useRef(referenceImages);
   const checkpointsRef = useRef(checkpoints);
   const workflowEventsRef = useRef(workflowEvents);
@@ -289,6 +290,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   documentRef.current = document;
   messagesRef.current = messages;
+  turnRef.current = turn;
   referenceImagesRef.current = referenceImages;
   checkpointsRef.current = checkpoints;
   workflowEventsRef.current = workflowEvents;
@@ -785,6 +787,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       publishRender(null);
       setPreviewOpen(false);
       setTurn({ running: false, stage: "idle", reviewIteration: 0 });
+      setAgentNarration("");
+      setLiveToolCalls([]);
     },
     [publishRender],
   );
@@ -820,7 +824,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const snapshot = snapshotsRef.current.get(id);
       if (!snapshot) return;
 
-      archiveCurrent();
+      if (messagesRef.current.length > 0) {
+        archiveCurrent();
+      }
       abortRef.current?.abort();
       setDocument(snapshot.document);
       setMessages(snapshot.messages);
@@ -829,6 +835,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setWorkflowEvents(snapshot.workflowEvents);
       setValidation(snapshot.validation);
       setVisualReview(snapshot.visualReview);
+      setAgentNarration("");
+      setLiveToolCalls([]);
       publishRender(null);
       setPreviewOpen(false);
       setTurn({ running: false, stage: "idle", reviewIteration: 0 });
@@ -881,6 +889,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [publishRender]);
 
   useEffect(() => {
+    if (turnRef.current.running) return;
     setChatHistory((prev) =>
       upsertHistory(prev, {
         id: document.documentId,
