@@ -1,9 +1,13 @@
 const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
-import type { InternalRenderResult, RasterizedPage } from "../../contracts/rendering";
+import type {
+  InternalRenderResult,
+  RasterizedPage,
+} from "../../contracts/rendering";
 
 declare const require: any;
 
-if (pdfjs && pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = ""; // Not needed in Node (use legacy build)
+if (pdfjs && pdfjs.GlobalWorkerOptions)
+  pdfjs.GlobalWorkerOptions.workerSrc = "";
 
 export async function rasterizePdf(
   render: InternalRenderResult,
@@ -19,6 +23,7 @@ export async function rasterizePdf(
     const pdf = await loadingTask.promise;
 
     const pages: RasterizedPage[] = [];
+    const pageTexts: string[] = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
       if (signal?.aborted)
@@ -32,7 +37,19 @@ export async function rasterizePdf(
         };
 
       const page = await pdf.getPage(i);
-      const scale = 2; // default render scale for decent resolution
+
+      // Extract text content
+      try {
+        const textContent = await page.getTextContent();
+        const text = textContent.items
+          .map((item: any) => item.str ?? "")
+          .join(" ");
+        pageTexts.push(text);
+      } catch {
+        pageTexts.push("");
+      }
+
+      const scale = 2;
       const viewport = page.getViewport({ scale });
 
       let createCanvas: any;
@@ -70,6 +87,9 @@ export async function rasterizePdf(
         heightPx: canvas.height,
       });
     }
+
+    // Attach pageTexts to the render result for validation
+    render.pageTexts = pageTexts;
 
     return { success: true, data: pages };
   } catch (err: any) {

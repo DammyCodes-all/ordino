@@ -206,7 +206,15 @@ export function executeCommand(
       existing.style = { ...existing.style, ...patchStyle };
     }
     updatedNodeIds.push(command.nodeId);
-    const contentFields = ["text", "level", "items", "columns", "rows", "ordered", "title"];
+    const contentFields = [
+      "text",
+      "level",
+      "items",
+      "columns",
+      "rows",
+      "ordered",
+      "title",
+    ];
     if (contentFields.some((f) => f in (command.patch as any))) {
       affectsPagination = true;
     }

@@ -20,7 +20,10 @@ export const spacingMap: Record<SpacingToken, number> = {
   lg: 24,
 };
 
-export const emphasisStyle: Record<Emphasis, { fontStyle?: "normal" | "italic"; fontWeight?: number }> = {
+export const emphasisStyle: Record<
+  Emphasis,
+  { fontStyle?: "normal" | "italic"; fontWeight?: number }
+> = {
   normal: {},
   bold: { fontWeight: 700 },
   italic: { fontStyle: "italic" },
@@ -84,8 +87,15 @@ export const THEME = {
   },
 } as const;
 
-export function resolveHeadingStyle(level: 1 | 2 | 3, style: HeadingStyle): Record<string, unknown> {
-  const sizeMap = { 1: THEME.FONT_SIZES.h1, 2: THEME.FONT_SIZES.h2, 3: THEME.FONT_SIZES.h3 };
+export function resolveHeadingStyle(
+  level: 1 | 2 | 3,
+  style: HeadingStyle,
+): Record<string, unknown> {
+  const sizeMap = {
+    1: THEME.FONT_SIZES.h1,
+    2: THEME.FONT_SIZES.h2,
+    3: THEME.FONT_SIZES.h3,
+  };
   return {
     fontSize: sizeMap[level],
     fontWeight: 700,
@@ -97,7 +107,9 @@ export function resolveHeadingStyle(level: 1 | 2 | 3, style: HeadingStyle): Reco
   };
 }
 
-export function resolveParagraphStyle(style: ParagraphStyle): Record<string, unknown> {
+export function resolveParagraphStyle(
+  style: ParagraphStyle,
+): Record<string, unknown> {
   return {
     fontSize: THEME.FONT_SIZES.body,
     color: THEME.COLORS.text,
@@ -109,13 +121,17 @@ export function resolveParagraphStyle(style: ParagraphStyle): Record<string, unk
   };
 }
 
-export function resolveListNodeStyle(style: ListStyle): Record<string, unknown> {
+export function resolveListNodeStyle(
+  style: ListStyle,
+): Record<string, unknown> {
   return {
     fontSize: THEME.FONT_SIZES.body,
     color: THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
-    lineHeight: style.compact ? THEME.LINE_HEIGHT.tight : THEME.LINE_HEIGHT.normal,
+    lineHeight: style.compact
+      ? THEME.LINE_HEIGHT.tight
+      : THEME.LINE_HEIGHT.normal,
   };
 }
 
@@ -143,11 +159,22 @@ export function resolveQuoteStyle(style: QuoteStyle): Record<string, unknown> {
   };
 }
 
-export function resolveCalloutStyle(style: CalloutStyle): Record<string, unknown> {
+export function resolveCalloutStyle(
+  style: CalloutStyle,
+): Record<string, unknown> {
   const variantMap = {
-    note: { bg: THEME.COLORS.calloutNote, border: THEME.COLORS.calloutNoteBorder },
-    highlight: { bg: THEME.COLORS.calloutHighlight, border: THEME.COLORS.calloutHighlightBorder },
-    warning: { bg: THEME.COLORS.calloutWarning, border: THEME.COLORS.calloutWarningBorder },
+    note: {
+      bg: THEME.COLORS.calloutNote,
+      border: THEME.COLORS.calloutNoteBorder,
+    },
+    highlight: {
+      bg: THEME.COLORS.calloutHighlight,
+      border: THEME.COLORS.calloutHighlightBorder,
+    },
+    warning: {
+      bg: THEME.COLORS.calloutWarning,
+      border: THEME.COLORS.calloutWarningBorder,
+    },
   };
   const v = variantMap[style.variant];
   return {
@@ -166,7 +193,9 @@ export function resolveCalloutStyle(style: CalloutStyle): Record<string, unknown
   };
 }
 
-export function resolveDividerStyle(style: DividerStyle): Record<string, unknown> {
+export function resolveDividerStyle(
+  style: DividerStyle,
+): Record<string, unknown> {
   return {
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],

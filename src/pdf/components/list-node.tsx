@@ -12,7 +12,10 @@ export function ListNode({ node }: { node: ListData }) {
       {node.items.map((item: string, idx: number) => (
         <View
           key={`${node.id}-item-${idx}`}
-          style={{ flexDirection: "row", marginBottom: node.style.compact ? 2 : 4 }}
+          style={{
+            flexDirection: "row",
+            marginBottom: node.style.compact ? 2 : 4,
+          }}
         >
           <Text
             style={{
