@@ -50,7 +50,6 @@ export function LeftRail() {
     generationBlocked,
     diagnosticsOpen,
     disclosureOpen,
-    publishedPreview,
     previewOpen,
     newDocument,
     setDisclosureOpen,
@@ -98,8 +97,7 @@ export function LeftRail() {
         <IconButton
           label="Toggle preview"
           onClick={() => setPreviewOpen(!previewOpen)}
-          disabled={!publishedPreview}
-          active={previewOpen && publishedPreview}
+          active={previewOpen}
         >
           <RailIcon
             title="Toggle preview"

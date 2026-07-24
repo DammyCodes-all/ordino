@@ -124,7 +124,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [document, setDocument] = useState<DocumentState>(() =>
-    createEmptyDocument(),
+    createMockDocumentFromPrompt(
+      "Sample product brief for investors — fake PDF preview for the Ordino UI shell.",
+    ),
   );
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
@@ -135,11 +137,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     stage: "idle",
     reviewIteration: 0,
   });
-  const [publishedPreview, setPublishedPreview] = useState(false);
+  const [publishedPreview, setPublishedPreview] = useState(true);
   const [cloudDisclosureAccepted, setCloudDisclosureAccepted] = useState(false);
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
   const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
     {
@@ -439,7 +441,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCheckpoints([]);
     setWorkflowEvents([]);
     setPublishedPreview(false);
-    setPreviewOpen(false);
+    setPreviewOpen(true);
     setTurn({ running: false, stage: "idle", reviewIteration: 0 });
   }, [actionsDisabled]);
 
