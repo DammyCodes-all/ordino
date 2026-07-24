@@ -182,8 +182,7 @@ textarea {
       color-mix(in oklab, white 18%, transparent),
       color-mix(in oklab, white 4%, transparent) 42%,
       color-mix(in oklab, black 18%, transparent)
-    ),
-    color-mix(in oklab, var(--surface) 55%, transparent);
+    ), color-mix(in oklab, var(--surface) 55%, transparent);
   background-blend-mode: soft-light, normal;
   box-shadow:
     0 28px 80px color-mix(in oklab, black 36%, transparent),
@@ -191,7 +190,7 @@ textarea {
     inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
   backdrop-filter: blur(22px) saturate(1.35);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
-  /* Theme sets --radius-* to 0; force real corners here */
+  /* Keep glass panel rounded even if local utilities conflict */
   border-radius: 32px !important;
 }
 

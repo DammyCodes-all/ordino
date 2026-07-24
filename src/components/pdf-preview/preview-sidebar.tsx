@@ -67,7 +67,7 @@ export function PreviewSidebar() {
               }}
             >
               <header
-                className="flex h-14 shrink-0 items-center gap-3 border-b border-white/10 px-4"
+                className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5"
                 style={{
                   borderTopLeftRadius: PANEL_RADIUS,
                   borderTopRightRadius: PANEL_RADIUS,
