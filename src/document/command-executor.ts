@@ -10,6 +10,7 @@ import {
 } from "../contracts/commands";
 import { DocumentOutline } from "../contracts/outline";
 import { documentStateSchema } from "../contracts/document";
+import { checkpointIdSchema } from "../contracts/ids";
 
 const makeError = (code: string, message: string): AppResult<never> => ({
   success: false,
@@ -205,7 +206,15 @@ export function executeCommand(
       existing.style = { ...existing.style, ...patchStyle };
     }
     updatedNodeIds.push(command.nodeId);
-    const contentFields = ["text", "level", "items", "columns", "rows", "ordered", "title"];
+    const contentFields = [
+      "text",
+      "level",
+      "items",
+      "columns",
+      "rows",
+      "ordered",
+      "title",
+    ];
     if (contentFields.some((f) => f in (command.patch as any))) {
       affectsPagination = true;
     }
@@ -255,11 +264,11 @@ export function createCheckpoint(
   reason: "user_turn" | "review_revision",
 ): AppResult<{ checkpoint: DocumentCheckpoint; document: DocumentState }> {
   const checkpoint: DocumentCheckpoint = {
-    id: crypto.randomUUID(),
+    id: checkpointIdSchema.parse(crypto.randomUUID()),
     reason,
     document: structuredClone(document),
     createdAt: new Date().toISOString(),
-  } as any;
+  };
 
   const continuation = structuredClone(document) as DocumentState;
   if (reason === "review_revision")

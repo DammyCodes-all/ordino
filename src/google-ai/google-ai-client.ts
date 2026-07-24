@@ -8,6 +8,27 @@ export interface GenerateOptions {
   signal?: AbortSignal;
 }
 
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface ToolCallResult {
+  toolName: string;
+  args: Record<string, unknown>;
+}
+
+export interface GenerateWithToolsOptions extends GenerateOptions {
+  tools: ToolDefinition[];
+  toolChoice?: "auto" | "required" | { type: "tool"; toolName: string };
+}
+
+export interface GenerateWithToolsResult {
+  text: string;
+  toolCalls?: ToolCallResult[];
+}
+
 export class GoogleAIClient {
   constructor(private config: GoogleAIConfiguration) {}
 
@@ -36,6 +57,38 @@ export class GoogleAIClient {
 
       const data = await res.json();
       return createSuccessResult(data.text);
+    } catch (error) {
+      return { success: false, error: mapErrorToAppError(error) };
+    }
+  }
+
+  async generateWithTools(options: GenerateWithToolsOptions): Promise<AppResult<GenerateWithToolsResult>> {
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: options.prompt,
+          systemPrompt: options.systemPrompt,
+          modelId: this.config.modelId,
+          images: options.images,
+          tools: options.tools,
+          toolChoice: options.toolChoice,
+        }),
+        signal: options.signal,
+      });
+
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        return createErrorResult(
+          errorJson.code || "MODEL_REQUEST_FAILED",
+          errorJson.message || `Route returned status ${res.status}`,
+          res.status === 429 || res.status >= 500,
+        );
+      }
+
+      const data = await res.json();
+      return createSuccessResult(data);
     } catch (error) {
       return { success: false, error: mapErrorToAppError(error) };
     }

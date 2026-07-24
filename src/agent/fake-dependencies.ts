@@ -18,40 +18,81 @@ import {
 import { createSuccessResult, createErrorResult } from "@/google-ai";
 
 export class FakeDocumentPort implements DocumentPort {
+  private nodeCounter = 0;
+
   execute(
     document: DocumentState,
     command: DocumentCommand,
   ): ReturnType<DocumentPort["execute"]> {
     let nextNodes = [...document.nodes];
+    let addedNodeIds: NodeId[] = [];
+    let updatedNodeIds: NodeId[] = [];
+    let movedNodeIds: NodeId[] = [];
+    let deletedNodeIds: NodeId[] = [];
+
     if (command.type === "add_node") {
+      this.nodeCounter++;
+      const nodeId = `node-${this.nodeCounter}` as NodeId;
       const newNode = {
-        id: `node-${document.nodes.length + 1}` as NodeId,
+        id: nodeId,
         type: command.node.type,
         ...(command.node as any),
       };
       nextNodes.push(newNode);
+      addedNodeIds = [nodeId];
+    } else if (command.type === "delete_node") {
+      nextNodes = nextNodes.filter((n) => n.id !== command.nodeId);
+      deletedNodeIds = [command.nodeId];
+    } else if (command.type === "move_node") {
+      const idx = nextNodes.findIndex((n) => n.id === command.nodeId);
+      if (idx !== -1) {
+        const [node] = nextNodes.splice(idx, 1);
+        if (command.position.kind === "end") {
+          nextNodes.push(node);
+        } else {
+          const targetIdx = nextNodes.findIndex((n) => n.id === (command.position as any).nodeId);
+          const insertAt = targetIdx === -1 ? nextNodes.length : command.position.kind === "before" ? targetIdx : targetIdx + 1;
+          nextNodes.splice(insertAt, 0, node);
+        }
+      }
+      movedNodeIds = [command.nodeId];
+    } else if (command.type === "edit_node") {
+      const idx = nextNodes.findIndex((n) => n.id === command.nodeId);
+      if (idx !== -1) {
+        nextNodes[idx] = { ...nextNodes[idx], ...(command.patch as any) };
+      }
+      updatedNodeIds = [command.nodeId];
     }
+
     const nextDoc: DocumentState = {
       ...document,
       nodes: nextNodes,
       version: document.version + 1,
     };
 
+    const baseReceipt: any = {
+      documentVersion: nextDoc.version,
+      outline: this.outline(nextDoc),
+      changeSet: {
+        fromVersion: document.version,
+        toVersion: nextDoc.version,
+        addedNodeIds,
+        updatedNodeIds,
+        movedNodeIds,
+        deletedNodeIds,
+        affectsPagination: command.type !== "edit_node" || Object.keys((command as any).patch || {}).some(
+          (f: string) => ["text", "level", "items", "columns", "rows", "ordered", "title"].includes(f),
+        ),
+      },
+    };
+
+    if (command.type === "add_node") {
+      baseReceipt.nodeId = addedNodeIds[0];
+    }
+
     return createSuccessResult({
       document: nextDoc,
-      receipt: {
-        documentVersion: nextDoc.version,
-        outline: this.outline(nextDoc),
-        changeSet: {
-          fromVersion: document.version,
-          toVersion: nextDoc.version,
-          addedNodeIds: command.type === "add_node" ? ["node-1" as NodeId] : [],
-          updatedNodeIds: command.type === "edit_node" ? [command.nodeId] : [],
-          movedNodeIds: command.type === "move_node" ? [command.nodeId] : [],
-          deletedNodeIds: command.type === "delete_node" ? [command.nodeId] : [],
-          affectsPagination: true,
-        },
-      },
+      receipt: baseReceipt,
     });
   }
 
