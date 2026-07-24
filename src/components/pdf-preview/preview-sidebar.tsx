@@ -13,7 +13,7 @@ export function PreviewSidebar() {
     exportPdf,
   } = useSession();
 
-  if (!previewOpen) {
+  if (!previewOpen || !publishedPreview) {
     return null;
   }
 
@@ -25,22 +25,20 @@ export function PreviewSidebar() {
         className="fixed inset-0 z-30 bg-black/50 md:hidden"
         onClick={() => setPreviewOpen(false)}
       />
-      <aside className="fixed inset-y-0 right-0 z-40 flex h-full w-[min(100%,22rem)] flex-col border-l border-border-subtle bg-surface shadow-2xl animate-fade-up md:static md:z-auto md:w-[40%] md:min-w-[16rem] md:max-w-[40%] md:shadow-none">
+      <aside className="fixed inset-y-0 right-0 z-40 flex h-full w-[min(100%,210mm)] flex-col border-l border-border-subtle bg-surface shadow-2xl animate-fade-up md:static md:z-auto md:w-[210mm] md:min-w-[210mm] md:max-w-[210mm] md:shrink-0 md:shadow-none">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle px-4">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium tracking-tight">
               Preview
             </p>
             <p className="truncate text-[11px] text-muted-dim">
-              {publishedPreview
-                ? document.meta.title
-                : "Waiting for a published PDF"}
+              {document.meta.title}
               {turn.running ? " · previous version while revising" : ""}
             </p>
           </div>
           <button
             type="button"
-            disabled={turn.running || !publishedPreview}
+            disabled={turn.running}
             onClick={exportPdf}
             className="rounded-lg border border-accent-dim bg-accent-soft px-2.5 py-1.5 text-xs text-accent transition-colors hover:border-accent disabled:opacity-35"
           >
@@ -55,7 +53,7 @@ export function PreviewSidebar() {
             ×
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#0e0e10]">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-preview-chrome">
           <PdfPreview variant="main" />
         </div>
       </aside>

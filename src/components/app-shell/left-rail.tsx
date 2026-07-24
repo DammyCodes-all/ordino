@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/components/app-shell/session-context";
+import { useTheme } from "@/components/theme/theme-provider";
 
 function IconButton({
   label,
@@ -50,12 +51,14 @@ export function LeftRail() {
     generationBlocked,
     diagnosticsOpen,
     disclosureOpen,
+    publishedPreview,
     previewOpen,
     newDocument,
     setDisclosureOpen,
     setDiagnosticsOpen,
     setPreviewOpen,
   } = useSession();
+  const { theme, toggleTheme } = useTheme();
 
   const statusTone = generationBlocked
     ? "bg-danger"
@@ -97,7 +100,8 @@ export function LeftRail() {
         <IconButton
           label="Toggle preview"
           onClick={() => setPreviewOpen(!previewOpen)}
-          active={previewOpen}
+          disabled={!publishedPreview}
+          active={previewOpen && publishedPreview}
         >
           <RailIcon
             title="Toggle preview"
@@ -150,9 +154,52 @@ export function LeftRail() {
         </IconButton>
       </nav>
 
-      <p className="rotate-180 text-[10px] tracking-[0.2em] text-muted-dim [writing-mode:vertical-rl]">
-        ORDINO
-      </p>
+      <div className="mb-4 flex flex-col items-center gap-2">
+        <IconButton
+          label={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? (
+            <RailIcon
+              title="Light mode"
+              path={
+                <>
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="4"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                  />
+                  <path
+                    d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                  />
+                </>
+              }
+            />
+          ) : (
+            <RailIcon
+              title="Dark mode"
+              path={
+                <path
+                  d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinejoin="round"
+                />
+              }
+            />
+          )}
+        </IconButton>
+        <p className="rotate-180 text-[10px] tracking-[0.2em] text-muted-dim [writing-mode:vertical-rl]">
+          ORDINO
+        </p>
+      </div>
     </aside>
   );
 }

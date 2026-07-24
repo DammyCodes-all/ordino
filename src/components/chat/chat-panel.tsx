@@ -61,9 +61,7 @@ export function ChatPanel() {
 
   return (
     <section
-      className={`relative flex h-full min-w-0 flex-col transition-[flex-basis,max-width] duration-300 ease-out ${
-        chatNarrow ? "min-w-0 flex-1 md:w-[60%] md:flex-none" : "flex-1"
-      }`}
+      className="relative flex h-full min-w-0 flex-1 flex-col"
     >
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-4 sm:px-5">
         <div className="min-w-0">

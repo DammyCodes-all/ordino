@@ -11,6 +11,7 @@ const PIPELINE: WorkflowStage[] = [
   "generating",
   "rendering",
   "validating",
+  "rasterizing",
   "reviewing",
   "revising",
   "finalizing",

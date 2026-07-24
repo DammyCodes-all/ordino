@@ -11,27 +11,30 @@ import {
   useState,
 } from "react";
 import {
-  downloadFileName,
-  renderFakePdfBlob,
-} from "@/components/pdf-preview/fake-pdf-document";
+  composeAgent,
+  createSessionPdfPort,
+} from "@/app/integration/compose-agent";
+import { downloadFileName } from "@/components/pdf-preview/fake-pdf-document";
 import type {
+  AgentTurnError,
   AgentTurnState,
   ConversationMessage,
   DiagnosticCheck,
   DocumentCheckpoint,
   DocumentState,
   GoogleAIHealthResponse,
+  InternalRenderResult,
   OutlineItem,
   ReferenceImage,
+  ValidationReport,
+  VisualReviewResult,
   WorkflowEvent,
   WorkflowStage,
 } from "@/contracts";
 import { googleAIHealthResponseSchema } from "@/contracts";
 import {
-  createCheckpoint,
   createEmptyDocument,
   createId,
-  createMockDocumentFromPrompt,
   deriveOutline,
 } from "@/lib/document-factory";
 
@@ -50,16 +53,6 @@ const STAGE_LABELS: Record<WorkflowStage, string> = {
   cancelled: "Cancelled",
 };
 
-const MOCK_TURN_STAGES: WorkflowStage[] = [
-  "planning",
-  "generating",
-  "rendering",
-  "validating",
-  "reviewing",
-  "finalizing",
-  "ready",
-];
-
 type SessionContextValue = {
   document: DocumentState;
   messages: ConversationMessage[];
@@ -69,6 +62,9 @@ type SessionContextValue = {
   turn: AgentTurnState;
   outline: OutlineItem[];
   publishedPreview: boolean;
+  previewUrl: string | null;
+  validation: ValidationReport | null;
+  visualReview: VisualReviewResult | null;
   cloudDisclosureAccepted: boolean;
   disclosureOpen: boolean;
   diagnosticsOpen: boolean;
@@ -94,24 +90,6 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-function sleep(ms: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-    const timer = window.setTimeout(() => resolve(), ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        window.clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
-  });
-}
-
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -122,11 +100,17 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function reviewIterationFromMessage(message: string): 0 | 1 | 2 | 3 | null {
+  const match = /revision pass (\d+)/i.exec(message);
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (value === 1 || value === 2 || value === 3) return value;
+  return null;
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [document, setDocument] = useState<DocumentState>(() =>
-    createMockDocumentFromPrompt(
-      "Sample product brief for investors — fake PDF preview for the Ordino UI shell.",
-    ),
+    createEmptyDocument(),
   );
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
@@ -137,11 +121,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     stage: "idle",
     reviewIteration: 0,
   });
-  const [publishedPreview, setPublishedPreview] = useState(true);
+  const [publishedPreview, setPublishedPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [publishedRender, setPublishedRender] =
+    useState<InternalRenderResult | null>(null);
+  const [validation, setValidation] = useState<ValidationReport | null>(null);
+  const [visualReview, setVisualReview] = useState<VisualReviewResult | null>(
+    null,
+  );
   const [cloudDisclosureAccepted, setCloudDisclosureAccepted] = useState(false);
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
   const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
     {
@@ -159,48 +150,70 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     {
       name: "storage",
       status: "ready",
-      message: "Local session store available (mock).",
+      message:
+        "Local session store available (in-memory until persistence lands).",
       remediation: null,
     },
     {
       name: "pdf_renderer",
       status: "ready",
-      message: "Fake PDF renderer active for UI preview.",
+      message: "Temporary PDF renderer active until Teammate A merges.",
       remediation: null,
     },
     {
       name: "export",
       status: "ready",
-      message: "Fake PDF export available.",
+      message: "PDF export available via temporary renderer.",
       remediation: null,
     },
   ]);
 
   const abortRef = useRef<AbortController | null>(null);
   const documentRef = useRef(document);
-  documentRef.current = document;
+  const messagesRef = useRef(messages);
+  const referenceImagesRef = useRef(referenceImages);
+  const previewUrlRef = useRef<string | null>(null);
+  const publishedRenderRef = useRef<InternalRenderResult | null>(null);
+  const pdfPort = useMemo(() => createSessionPdfPort(), []);
 
-  const pushEvent = useCallback(
-    (stage: WorkflowStage, level: WorkflowEvent["level"] = "info") => {
-      const event: WorkflowEvent = {
-        stage,
-        message: STAGE_LABELS[stage],
-        level,
-        createdAt: new Date().toISOString(),
-      };
-      setWorkflowEvents((prev) => [...prev, event]);
-      setTurn((prev) => ({
-        ...prev,
-        stage,
-        running:
-          stage !== "ready" &&
-          stage !== "failed" &&
-          stage !== "cancelled" &&
-          stage !== "idle",
-      }));
+  documentRef.current = document;
+  messagesRef.current = messages;
+  referenceImagesRef.current = referenceImages;
+  publishedRenderRef.current = publishedRender;
+
+  const revokePreviewUrl = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
+  }, []);
+
+  const publishRender = useCallback(
+    (render: InternalRenderResult | null) => {
+      revokePreviewUrl();
+      if (!render) {
+        setPublishedRender(null);
+        setPublishedPreview(false);
+        return;
+      }
+      const url = URL.createObjectURL(render.pdfBlob);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
+      setPublishedRender(render);
+      setPublishedPreview(true);
+      setPreviewOpen(true);
     },
-    [],
+    [revokePreviewUrl],
   );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+    };
+  }, []);
 
   const refreshHealth = useCallback(async () => {
     setDiagnosticChecks((prev) =>
@@ -293,7 +306,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refreshHealth();
   }, [refreshHealth]);
 
-  const generationBlocked = false;
+  const generationBlocked = health?.status !== "ready";
 
   const outline = useMemo(() => deriveOutline(document), [document]);
   const actionsDisabled = turn.running;
@@ -318,7 +331,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const refIds = referenceImages.map((image) => image.id);
+      const priorConversation = messagesRef.current;
+      const snapshotDocument = documentRef.current;
+      const refs = referenceImagesRef.current;
+      const refIds = refs.map((image) => image.id);
+
       const userMessage: ConversationMessage = {
         id: createId("message"),
         role: "user",
@@ -327,54 +344,129 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
       };
 
+      const turnDocument: DocumentState =
+        snapshotDocument.nodes.length === 0
+          ? {
+              ...snapshotDocument,
+              meta: {
+                ...snapshotDocument.meta,
+                title:
+                  trimmed.slice(0, 80).replace(/\s+/g, " ") ||
+                  "Untitled document",
+              },
+            }
+          : snapshotDocument;
+
       setMessages((prev) => [...prev, userMessage]);
-      setCheckpoints((prev) => [
-        ...prev,
-        createCheckpoint(documentRef.current, "user_turn"),
-      ]);
       setWorkflowEvents([]);
+      setValidation(null);
+      setVisualReview(null);
       setTurn({ running: true, stage: "planning", reviewIteration: 0 });
-      // Keep an existing artifact open during revisions (Claude-style).
 
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const agent = composeAgent({
+        onEvent: (event) => {
+          setWorkflowEvents((prev) => [...prev, event]);
+          const iteration = reviewIterationFromMessage(event.message);
+          setTurn((prev) => ({
+            ...prev,
+            stage: event.stage,
+            reviewIteration: iteration ?? prev.reviewIteration,
+            running:
+              event.stage !== "ready" &&
+              event.stage !== "failed" &&
+              event.stage !== "cancelled" &&
+              event.stage !== "idle",
+          }));
+        },
+      });
+
       try {
-        for (const stage of MOCK_TURN_STAGES) {
-          pushEvent(stage, stage === "ready" ? "success" : "info");
-          if (stage === "ready") break;
-          await sleep(520, controller.signal);
+        const result = await agent.runTurn({
+          userMessage: trimmed,
+          document: turnDocument,
+          conversation: priorConversation,
+          referenceImages: refs,
+          signal: controller.signal,
+        });
+
+        if (result.success) {
+          setDocument(result.data.document);
+          setCheckpoints((prev) => [
+            ...prev,
+            ...result.data.createdCheckpoints,
+          ]);
+          setValidation(result.data.validation);
+          setVisualReview(result.data.visualReview);
+          publishRender(result.data.finalRender);
+
+          const assistantMessage: ConversationMessage = {
+            id: createId("message"),
+            role: "assistant",
+            text: result.data.assistantMessage,
+            referenceImageIds: [],
+            createdAt: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          setTurn({
+            running: false,
+            stage: "ready",
+            reviewIteration: result.data.reviewIterations,
+          });
+          return;
         }
 
-        const nextDocument = createMockDocumentFromPrompt(trimmed);
-        setDocument(nextDocument);
-        setPublishedPreview(true);
-        setPreviewOpen(true);
+        const error = result.error as AgentTurnError;
+        const recovery = error.recovery;
+        setDocument(recovery.document);
+        setCheckpoints((prev) => [...prev, ...recovery.createdCheckpoints]);
+        if (recovery.lastValidRender) {
+          publishRender(recovery.lastValidRender);
+        }
 
-        const assistantMessage: ConversationMessage = {
-          id: createId("message"),
-          role: "assistant",
-          text: `I've drafted “${nextDocument.meta.title}” with ${nextDocument.nodes.length} sections. Review the outline and PDF preview on the right — say what to change next.`,
-          referenceImageIds: [],
-          createdAt: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setTurn({ running: false, stage: "ready", reviewIteration: 0 });
-      } catch (error) {
-        const aborted =
-          error instanceof DOMException && error.name === "AbortError";
-        if (aborted) {
-          pushEvent("cancelled", "warning");
+        if (error.code === "ABORTED") {
+          setWorkflowEvents((prev) => [
+            ...prev,
+            {
+              stage: "cancelled",
+              message: STAGE_LABELS.cancelled,
+              level: "warning",
+              createdAt: new Date().toISOString(),
+            },
+          ]);
           setTurn({ running: false, stage: "cancelled", reviewIteration: 0 });
         } else {
-          pushEvent("failed", "error");
+          setWorkflowEvents((prev) => [
+            ...prev,
+            {
+              stage: "failed",
+              message: error.message.slice(0, 300) || STAGE_LABELS.failed,
+              level: "error",
+              createdAt: new Date().toISOString(),
+            },
+          ]);
           setTurn({ running: false, stage: "failed", reviewIteration: 0 });
         }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unexpected turn failure.";
+        setWorkflowEvents((prev) => [
+          ...prev,
+          {
+            stage: "failed",
+            message: message.slice(0, 300),
+            level: "error",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setTurn({ running: false, stage: "failed", reviewIteration: 0 });
       } finally {
         abortRef.current = null;
       }
     },
-    [cloudDisclosureAccepted, pushEvent, referenceImages, turn.running],
+    [cloudDisclosureAccepted, generationBlocked, publishRender, turn.running],
   );
 
   const undo = useCallback(() => {
@@ -382,21 +474,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const previous = checkpoints[checkpoints.length - 1];
     setDocument(previous.document);
     setCheckpoints((prev) => prev.slice(0, -1));
-    setPublishedPreview(previous.document.nodes.length > 0);
+    setValidation(null);
+    setVisualReview(null);
     setTurn({ running: false, stage: "idle", reviewIteration: 0 });
-  }, [actionsDisabled, checkpoints]);
+
+    if (previous.document.nodes.length === 0) {
+      publishRender(null);
+      return;
+    }
+
+    void pdfPort.render(previous.document).then((result) => {
+      if (result.success) {
+        publishRender(result.data);
+      } else {
+        publishRender(null);
+      }
+    });
+  }, [actionsDisabled, checkpoints, pdfPort, publishRender]);
 
   const exportPdf = useCallback(() => {
     if (!publishedPreview) return;
-    void renderFakePdfBlob(document).then((blob) => {
-      const url = URL.createObjectURL(blob);
+    const current = documentRef.current;
+    const existing = publishedRenderRef.current;
+    void pdfPort.export(current, existing ?? undefined).then((result) => {
+      if (!result.success) return;
+      const url = URL.createObjectURL(result.data.blob);
       const anchor = window.document.createElement("a");
       anchor.href = url;
-      anchor.download = downloadFileName(document.meta.title);
+      anchor.download =
+        result.data.filename || downloadFileName(current.meta.title);
       anchor.click();
       URL.revokeObjectURL(url);
     });
-  }, [document, publishedPreview]);
+  }, [pdfPort, publishedPreview]);
 
   const addReference = useCallback(
     async (file: File) => {
@@ -440,10 +550,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setReferenceImages([]);
     setCheckpoints([]);
     setWorkflowEvents([]);
-    setPublishedPreview(false);
-    setPreviewOpen(true);
+    setValidation(null);
+    setVisualReview(null);
+    publishRender(null);
+    setPreviewOpen(false);
     setTurn({ running: false, stage: "idle", reviewIteration: 0 });
-  }, [actionsDisabled]);
+  }, [actionsDisabled, publishRender]);
 
   const value = useMemo<SessionContextValue>(
     () => ({
@@ -455,6 +567,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       turn,
       outline,
       publishedPreview,
+      previewUrl,
+      validation,
+      visualReview,
       cloudDisclosureAccepted,
       disclosureOpen,
       diagnosticsOpen,
@@ -486,12 +601,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       turn,
       outline,
       publishedPreview,
+      previewUrl,
+      validation,
+      visualReview,
       cloudDisclosureAccepted,
       disclosureOpen,
       diagnosticsOpen,
       previewOpen,
       health,
       diagnosticChecks,
+      generationBlocked,
       stageLabel,
       actionsDisabled,
       acceptDisclosure,
