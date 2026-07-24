@@ -42,14 +42,14 @@ export class AgentOrchestrator implements AgentPort {
 
   private checkAborted(signal?: AbortSignal, currentDoc?: DocumentState, checkpoints?: DocumentCheckpoint[], lastRender?: InternalRenderResult | null) {
     if (signal?.aborted) {
-      throw {
-        isAbortError: true,
-        recovery: {
-          document: currentDoc!,
-          createdCheckpoints: checkpoints ?? [],
-          lastValidRender: lastRender ?? null,
-        },
+      const err = new Error("Turn was aborted by user");
+      (err as any).isAbortError = true;
+      (err as any).recovery = {
+        document: currentDoc!,
+        createdCheckpoints: checkpoints ?? [],
+        lastValidRender: lastRender ?? null,
       };
+      throw err;
     }
   }
 
@@ -214,12 +214,17 @@ export class AgentOrchestrator implements AgentPort {
       }
 
       this.emit("finalizing", "Finalizing agent turn");
+
+      const exportRes = await this.dependencies.pdf.export(currentDoc, lastValidRender, input.signal);
+      const exportResult = exportRes.success ? exportRes.data : null;
+
       this.emit("ready", "Turn completed successfully");
 
       return createSuccessResult({
         document: currentDoc,
         createdCheckpoints,
         finalRender: lastValidRender!,
+        exportResult,
         validation: finalValidation,
         visualReview: finalVisualReview,
         reviewIterations: reviewIterations as 0 | 1 | 2 | 3,
