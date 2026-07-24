@@ -168,6 +168,22 @@ export function listenOnce(options?: {
   });
 }
 
+let activeAudio: HTMLAudioElement | null = null;
+
+/** Call synchronously from a click so later Audio.play() is allowed. */
+export function unlockMediaPlayback() {
+  if (typeof window === "undefined") return;
+  unlockSpeech();
+  if (!activeAudio) activeAudio = new Audio();
+  // Tiny silent WAV to unlock autoplay for this element.
+  activeAudio.src =
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+  void activeAudio.play().then(() => {
+    activeAudio?.pause();
+    if (activeAudio) activeAudio.currentTime = 0;
+  }).catch(() => undefined);
+}
+
 export async function speakText(
   text: string,
   options?: { lang?: string; rate?: number; signal?: AbortSignal },
@@ -179,20 +195,18 @@ export async function speakText(
     throw new DOMException("Aborted", "AbortError");
   }
 
+  // Prefer server WAV playback — Chromium speechSynthesis is unreliable here.
   try {
-    if (speechSynthesisSupported()) {
-      await speakWithBrowser(trimmed, options);
-      return;
-    }
+    await speakWithServer(trimmed, options);
+    return;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    // Fall through to server TTS when Chromium synthesis-failed.
   }
 
-  await speakWithServer(trimmed, options);
+  if (speechSynthesisSupported()) {
+    await speakWithBrowser(trimmed, options);
+  }
 }
-
-let activeAudio: HTMLAudioElement | null = null;
 
 async function speakWithServer(
   text: string,
@@ -219,11 +233,11 @@ async function speakWithServer(
   const url = URL.createObjectURL(blob);
 
   await new Promise<void>((resolve, reject) => {
-    const audio = new Audio(url);
+    const audio = activeAudio ?? new Audio();
     activeAudio = audio;
+    audio.src = url;
 
     const cleanup = () => {
-      if (activeAudio === audio) activeAudio = null;
       URL.revokeObjectURL(url);
       options?.signal?.removeEventListener("abort", onAbort);
     };

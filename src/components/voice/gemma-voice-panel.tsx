@@ -18,7 +18,7 @@ import {
   speechRecognitionSupported,
   speechSynthesisSupported,
   stopSpeaking,
-  unlockSpeech,
+  unlockMediaPlayback,
 } from "@/lib/speech";
 
 type VoiceTurn = {
@@ -83,23 +83,27 @@ export function GemmaVoicePanel() {
     return (await response.json()) as VoiceReply;
   }
 
-  async function withSpeech<T>(run: () => Promise<T>) {
+  async function withSpeech<T>(
+    run: () => Promise<T>,
+    opts?: { requireMic?: boolean },
+  ) {
     setError(null);
     setBusy(true);
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     try {
-      unlockSpeech();
-      const permission = await requestAudioPermission();
-      if (permission === "denied") {
-        throw new Error(
-          "Microphone permission denied. Click the lock icon in the address bar, allow microphone, then try again.",
-        );
-      }
-      if (permission === "unsupported") {
-        throw new Error(
-          "This browser cannot request audio permission. Use Chrome or Edge on localhost/HTTPS.",
-        );
+      if (opts?.requireMic) {
+        const permission = await requestAudioPermission();
+        if (permission === "denied") {
+          throw new Error(
+            "Microphone permission denied. Allow mic in the address bar, then try again.",
+          );
+        }
+        if (permission === "unsupported") {
+          throw new Error(
+            "This browser cannot request microphone permission. Use Chrome or Edge.",
+          );
+        }
       }
       return await run();
     } catch (err) {
@@ -116,12 +120,8 @@ export function GemmaVoicePanel() {
   }
 
   async function handleIntroAndOpen() {
-    unlockSpeech();
+    unlockMediaPlayback();
     setOpen(true);
-    if (!speechSynthesisSupported()) {
-      setError("This browser cannot speak aloud. Try Chrome or Edge.");
-      return;
-    }
     await withSpeech(async () => {
       const data = await callVoiceApi({
         mode: "intro",
@@ -148,11 +148,7 @@ export function GemmaVoicePanel() {
   }
 
   async function handleReadAloud() {
-    unlockSpeech();
-    if (!speechSynthesisSupported()) {
-      setError("Speech synthesis is not available in this browser.");
-      return;
-    }
+    unlockMediaPlayback();
     await withSpeech(async () => {
       setSpeaking(true);
       const preface =
@@ -171,7 +167,7 @@ export function GemmaVoicePanel() {
   }
 
   async function handleTalk() {
-    unlockSpeech();
+    unlockMediaPlayback();
     if (!speechRecognitionSupported()) {
       setError(
         "Microphone speech recognition needs Chrome or Edge over HTTPS/localhost.",
@@ -214,14 +210,12 @@ export function GemmaVoicePanel() {
       };
       setTurns((prev) => [...prev, assistantTurn]);
 
-      if (speechSynthesisSupported()) {
-        setSpeaking(true);
-        await speakLongText(data.reply, {
-          lang: data.languageCode,
-          signal: abortRef.current?.signal,
-        });
-      }
-    });
+      setSpeaking(true);
+      await speakLongText(data.reply, {
+        lang: data.languageCode,
+        signal: abortRef.current?.signal,
+      });
+    }, { requireMic: true });
   }
 
   function handleStop() {
