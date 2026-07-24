@@ -185,7 +185,8 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 px-6 py-5 sm:px-8">
+      <div className="shrink-0 px-6 py-5 pb-[calc(1.25rem+var(--mobile-nav-height)+var(--safe-bottom))] sm:px-8 md:pb-5">
+        <GemmaVoicePanel />
         <ReviewFindings />
         <ChatOutline />
         <form
