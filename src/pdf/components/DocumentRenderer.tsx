@@ -41,16 +41,25 @@ function renderNode(node: DocumentNode) {
   }
 }
 
-function PageFooter({ pageNumber, title }: { pageNumber: number; title: string }) {
+function PageFooter({
+  pageNumber,
+  title,
+}: {
+  pageNumber: number;
+  title: string;
+}) {
   return (
     <View
       fixed
-      left={THEME.MARGIN.left}
-      right={THEME.MARGIN.right}
-      bottom={20}
-      flexDirection="row"
-      justifyContent="space-between"
-      alignItems="center"
+      style={{
+        position: "absolute",
+        bottom: 20,
+        left: THEME.MARGIN.left,
+        right: THEME.MARGIN.right,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
     >
       <Text style={THEME.FOOTER_STYLE}>{title}</Text>
       <Text style={THEME.PAGE_NUMBER_STYLE}>{pageNumber}</Text>
@@ -76,12 +85,7 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
   return (
     <Document>
       {pages.map((nodes, pi) => (
-        <Page
-          key={`page-${pi}`}
-          size={THEME.PAGE_SIZE}
-          style={PAGE_STYLE}
-          wrap
-        >
+        <Page key={`page-${pi}`} size={THEME.PAGE_SIZE} style={PAGE_STYLE} wrap>
           {pi === 0 ? (
             <Text
               style={{
