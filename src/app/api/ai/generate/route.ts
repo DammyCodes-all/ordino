@@ -44,7 +44,7 @@ export async function POST(request: Request): Promise<Response> {
     const toolsRecord =
       tools && tools.length > 0
         ? Object.fromEntries(
-            tools.map((t) => [t.name, { description: t.description, parameters: t.parameters }]),
+            tools.map((t) => [t.name, { description: t.description, inputSchema: t.parameters }]),
           )
         : undefined;
 
@@ -57,14 +57,14 @@ export async function POST(request: Request): Promise<Response> {
           content: content as any,
         },
       ],
-      ...(toolsRecord ? { tools: toolsRecord, toolChoice: toolChoice ?? "auto" } : {}),
+      ...(toolsRecord ? { tools: toolsRecord as any, toolChoice: toolChoice ?? "auto" } : {}),
       maxRetries: 2,
       abortSignal: request.signal,
     });
 
     return Response.json({
       text: result.text,
-      toolCalls: result.toolCalls?.map((tc) => ({ toolName: tc.toolName, args: tc.args })),
+      toolCalls: (result as any).toolCalls?.map((tc: any) => ({ toolName: tc.toolName, args: tc.args })),
     });
   } catch (error: any) {
     const message = error?.message || String(error);
