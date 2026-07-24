@@ -1,4 +1,6 @@
 import {
+  type AnalysisDocumentId,
+  analysisDocumentIdSchema,
   type CheckpointId,
   checkpointIdSchema,
   type DocumentCheckpoint,
@@ -7,11 +9,17 @@ import {
   type DocumentState,
   documentIdSchema,
   documentStateSchema,
+  type HighlightId,
+  highlightIdSchema,
   type MessageId,
   messageIdSchema,
+  type NarrationSegmentId,
+  narrationSegmentIdSchema,
   type NodeId,
   nodeIdSchema,
   type OutlineItem,
+  type PdfTextSpanId,
+  pdfTextSpanIdSchema,
   type ReferenceImageId,
   referenceImageIdSchema,
 } from "@/contracts";
@@ -21,9 +29,31 @@ export function createId(kind: "node"): NodeId;
 export function createId(kind: "message"): MessageId;
 export function createId(kind: "reference"): ReferenceImageId;
 export function createId(kind: "checkpoint"): CheckpointId;
+export function createId(kind: "analysis"): AnalysisDocumentId;
+export function createId(kind: "span"): PdfTextSpanId;
+export function createId(kind: "highlight"): HighlightId;
+export function createId(kind: "narration"): NarrationSegmentId;
 export function createId(
-  kind: "document" | "node" | "message" | "reference" | "checkpoint",
-): DocumentId | NodeId | MessageId | ReferenceImageId | CheckpointId {
+  kind:
+    | "document"
+    | "node"
+    | "message"
+    | "reference"
+    | "checkpoint"
+    | "analysis"
+    | "span"
+    | "highlight"
+    | "narration",
+):
+  | DocumentId
+  | NodeId
+  | MessageId
+  | ReferenceImageId
+  | CheckpointId
+  | AnalysisDocumentId
+  | PdfTextSpanId
+  | HighlightId
+  | NarrationSegmentId {
   const raw = crypto.randomUUID();
   switch (kind) {
     case "document":
@@ -36,6 +66,14 @@ export function createId(
       return referenceImageIdSchema.parse(raw);
     case "checkpoint":
       return checkpointIdSchema.parse(raw);
+    case "analysis":
+      return analysisDocumentIdSchema.parse(raw);
+    case "span":
+      return pdfTextSpanIdSchema.parse(raw);
+    case "highlight":
+      return highlightIdSchema.parse(raw);
+    case "narration":
+      return narrationSegmentIdSchema.parse(raw);
   }
 }
 
