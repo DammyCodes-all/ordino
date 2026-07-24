@@ -34,6 +34,6 @@ export interface ModelDiagnosticPort {
 
 export const DEFAULT_GOOGLE_AI_CONFIGURATION: GoogleAIConfiguration = {
   provider: "google-ai-studio",
-  modelId: "gemini-2.5-flash",
+  modelId: "gemma-4-31b-it",
   transportRetries: 2,
 };

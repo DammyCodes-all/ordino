@@ -5,7 +5,7 @@ import { googleAIHealthResponseSchema } from "@/contracts";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const DEFAULT_MODEL_ID = "gemini-2.5-flash";
+const DEFAULT_MODEL_ID = "gemma-4-31b-it";
 
 export async function GET(request: Request): Promise<Response> {
   const modelId =

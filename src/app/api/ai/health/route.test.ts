@@ -23,7 +23,7 @@ describe("GET /api/ai/health", () => {
     expect(response.status).toBe(503);
     expect(body).toEqual({
       provider: "google-ai-studio",
-      modelId: "gemini-2.5-flash",
+      modelId: "gemma-4-31b-it",
       status: "not_configured",
       message: "GOOGLE_GENERATIVE_AI_API_KEY is not configured.",
     });

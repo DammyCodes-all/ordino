@@ -5,7 +5,7 @@ import { aiGenerateRequestSchema } from "@/google-ai";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const DEFAULT_MODEL_ID = "gemini-2.5-flash";
+const DEFAULT_MODEL_ID = "gemma-4-31b-it";
 
 export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;

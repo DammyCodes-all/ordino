@@ -60,7 +60,7 @@ describe("shared contracts", () => {
   it("requires Google AI Studio configuration", () => {
     const result = googleAIConfigurationSchema.safeParse({
       provider: "google-ai-studio",
-      modelId: "gemini-2.5-flash",
+      modelId: "gemma-4-31b-it",
       transportRetries: 2,
     });
 

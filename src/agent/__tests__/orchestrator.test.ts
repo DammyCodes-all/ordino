@@ -71,7 +71,7 @@ describe("AgentOrchestrator acceptance tests", () => {
         validatePdf: async () => ({ documentVersion: 1, pass: true, issues: [] }),
         onEvent: (e) => events.push(e),
       },
-      { provider: "google-ai-studio", modelId: "gemini-2.5-flash", transportRetries: 2 },
+      { provider: "google-ai-studio", modelId: "gemma-4-31b-it", transportRetries: 2 },
     );
 
     const result = await agent.runTurn(input);
@@ -99,7 +99,7 @@ describe("AgentOrchestrator acceptance tests", () => {
         validatePdf: async () => ({ documentVersion: 1, pass: true, issues: [] }),
         onEvent: () => {},
       },
-      { provider: "google-ai-studio", modelId: "gemini-2.5-flash", transportRetries: 2 },
+      { provider: "google-ai-studio", modelId: "gemma-4-31b-it", transportRetries: 2 },
     );
 
     const result = await agent.runTurn({ ...input, signal: controller.signal });
