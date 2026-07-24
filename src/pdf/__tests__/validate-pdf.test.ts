@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
-import { validatePdf } from "../validate-pdf";
+import { Blob as NodeBlob } from "node:buffer";
+import { describe, expect, it } from "vitest";
+import type { InternalRenderResult } from "../../contracts/rendering";
 import { createDocument } from "../../document/create-document";
 import { professionalDocumentFixture } from "../../document/fixtures";
-import type { InternalRenderResult } from "../../contracts/rendering";
-import { Blob as NodeBlob } from "buffer";
+import { validatePdf } from "../validate-pdf";
 
 function makeRender(
   overrides: Partial<InternalRenderResult> = {},

@@ -1,9 +1,8 @@
-import React from "react";
-import { View, Text } from "@react-pdf/renderer";
+import { Text, View } from "@react-pdf/renderer";
 import type {
-  TableStyle,
-  TableColumn,
   DocumentNode,
+  TableColumn,
+  TableStyle,
 } from "../../contracts/document";
 import { resolveTableStyle, THEME } from "../professional-theme";
 

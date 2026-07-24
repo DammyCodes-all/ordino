@@ -1,4 +1,3 @@
-import React from "react";
 import { Text } from "@react-pdf/renderer";
 import type { DocumentNode } from "../../contracts/document";
 import { resolveHeadingStyle } from "../professional-theme";

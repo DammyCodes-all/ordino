@@ -1,14 +1,14 @@
-import { AppResult } from "../contracts/result";
-import { DocumentState } from "../contracts/document";
-import {
-  InternalRenderResult,
-  RasterizedPage,
+import type { DocumentState } from "../contracts/document";
+import type {
   ExportResult,
+  InternalRenderResult,
   PdfPort,
+  RasterizedPage,
 } from "../contracts/rendering";
-import { renderDocumentToPdf } from "./render/headless";
-import { rasterizePdf } from "./rasterize/pdfjs";
+import type { AppResult } from "../contracts/result";
 import { exportDocument } from "./exporter";
+import { rasterizePdf } from "./rasterize/pdfjs";
+import { renderDocumentToPdf } from "./render/headless";
 
 export { validatePdf } from "./validate-pdf";
 

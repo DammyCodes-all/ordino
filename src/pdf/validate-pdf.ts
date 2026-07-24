@@ -1,8 +1,8 @@
 import type { DocumentState } from "../contracts/document";
 import type { InternalRenderResult } from "../contracts/rendering";
 import type {
-  ValidationReport,
   ValidationIssue,
+  ValidationReport,
 } from "../contracts/validation";
 
 function makeIssue(

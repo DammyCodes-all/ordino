@@ -1,15 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  spacingMap,
   emphasisStyle,
-  THEME,
-  resolveHeadingStyle,
-  resolveParagraphStyle,
-  resolveListNodeStyle,
-  resolveTableStyle,
-  resolveQuoteStyle,
   resolveCalloutStyle,
   resolveDividerStyle,
+  resolveHeadingStyle,
+  resolveListNodeStyle,
+  resolveParagraphStyle,
+  resolveQuoteStyle,
+  spacingMap,
+  THEME,
 } from "../professional-theme";
 
 describe("professional-theme", () => {

@@ -1,11 +1,11 @@
 import type {
-  HeadingStyle,
-  ParagraphStyle,
-  ListStyle,
-  TableStyle,
-  QuoteStyle,
   CalloutStyle,
   DividerStyle,
+  HeadingStyle,
+  ListStyle,
+  ParagraphStyle,
+  QuoteStyle,
+  TableStyle,
 } from "../contracts/document";
 
 type SpacingToken = "none" | "xs" | "sm" | "md" | "lg";

@@ -1,15 +1,14 @@
-import React from "react";
-import { Document, Page, View, Text } from "@react-pdf/renderer";
-import type { DocumentState, DocumentNode } from "../../contracts/document";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
+import type { DocumentNode, DocumentState } from "../../contracts/document";
 import { THEME } from "../professional-theme";
-import { HeadingNode } from "./heading-node";
-import { ParagraphNode } from "./paragraph-node";
-import { ListNode } from "./list-node";
-import { TableNode } from "./table-node";
-import { QuoteNode } from "./quote-node";
 import { CalloutNode } from "./callout-node";
 import { DividerNode } from "./divider-node";
+import { HeadingNode } from "./heading-node";
+import { ListNode } from "./list-node";
 import { PageBreakNode } from "./page-break-node";
+import { ParagraphNode } from "./paragraph-node";
+import { QuoteNode } from "./quote-node";
+import { TableNode } from "./table-node";
 
 const PAGE_STYLE = {
   paddingTop: THEME.MARGIN.top,
