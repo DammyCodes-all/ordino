@@ -170,6 +170,31 @@ function formatActionResult(action: WriterAction, result: any): string {
   return "succeeded";
 }
 
+function describeActionProgress(step: number, action: WriterAction, ok: boolean): string {
+  const prefix = `Step ${step}/${MAX_WRITER_STEPS}`;
+  if (!ok) return `${prefix}: ${action.action} failed`;
+  switch (action.action) {
+    case "addNode": {
+      const node = action.node as { type?: string; text?: string; level?: number };
+      const preview =
+        typeof node.text === "string" && node.text.trim()
+          ? ` “${node.text.trim().slice(0, 48)}${node.text.trim().length > 48 ? "…" : ""}”`
+          : "";
+      return `${prefix}: added ${node.type ?? "node"}${preview}`;
+    }
+    case "editNode":
+      return `${prefix}: edited ${action.nodeType}`;
+    case "moveNode":
+      return `${prefix}: moved a node`;
+    case "deleteNode":
+      return `${prefix}: deleted a node`;
+    case "readNode":
+      return `${prefix}: read a node`;
+    case "finalize":
+      return `${prefix}: finalized writing`;
+  }
+}
+
 export async function runWriterLoop(
   client: GoogleAIClient,
   document: DocumentState,
@@ -177,6 +202,7 @@ export async function runWriterLoop(
   toolExecutor: ToolExecutor,
   userMessage: string,
   signal?: AbortSignal,
+  onProgress?: (message: string) => void,
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const history: string[] = [];
@@ -191,6 +217,9 @@ export async function runWriterLoop(
       };
     }
     steps++;
+    onProgress?.(
+      `Step ${steps}/${MAX_WRITER_STEPS}: asking model for next write action…`,
+    );
 
     const prompt = buildWriterPrompt(currentDoc, plan, history, userMessage, readResults);
 
@@ -205,6 +234,7 @@ export async function runWriterLoop(
     );
 
     if (!res.success) {
+      onProgress?.(`Step ${steps}/${MAX_WRITER_STEPS}: model output failed validation`);
       return res;
     }
 
@@ -212,6 +242,7 @@ export async function runWriterLoop(
 
     if (action.action === "finalize") {
       history.push(`  Step ${steps}: finalized`);
+      onProgress?.(describeActionProgress(steps, action, true));
       return {
         success: true,
         data: {
@@ -228,9 +259,11 @@ export async function runWriterLoop(
         readResults.set(action.nodeId, r.result.data.node);
       }
     }
+    onProgress?.(describeActionProgress(steps, action, !!r.result.success));
     history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
   }
 
+  onProgress?.(`Reached max ${MAX_WRITER_STEPS} write steps — continuing to render`);
   return {
     success: true,
     data: {
@@ -247,6 +280,7 @@ export async function runRevisionLoop(
   visualIssues: any[],
   toolExecutor: ToolExecutor,
   signal?: AbortSignal,
+  onProgress?: (message: string) => void,
 ): Promise<AppResult<{ document: DocumentState }>> {
   let currentDoc = document;
   const history: string[] = [];
@@ -260,6 +294,9 @@ export async function runRevisionLoop(
       };
     }
     steps++;
+    onProgress?.(
+      `Revision step ${steps}/${MAX_WRITER_STEPS}: asking model for a fix…`,
+    );
 
     const outline = currentDoc.nodes.map((n, i) => ({ id: n.id, index: i, type: n.type }));
     const context: CombinedRevisionContext = { validationIssues, visualIssues };
@@ -280,12 +317,14 @@ export async function runRevisionLoop(
     );
 
     if (!res.success) {
+      onProgress?.(`Revision step ${steps}/${MAX_WRITER_STEPS}: model output failed`);
       return res;
     }
 
     const action = res.data as WriterAction;
 
     if (action.action === "finalize") {
+      onProgress?.(describeActionProgress(steps, action, true));
       return {
         success: true,
         data: { document: currentDoc },
@@ -299,6 +338,7 @@ export async function runRevisionLoop(
     } else {
       history.push(`  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`);
     }
+    onProgress?.(describeActionProgress(steps, action, !!r.result.success));
   }
 
   return {
