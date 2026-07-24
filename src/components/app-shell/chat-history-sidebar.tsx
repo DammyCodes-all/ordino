@@ -30,6 +30,7 @@ export function ChatHistorySidebar({ open }: { open: boolean }) {
       initial={false}
       animate={{
         width: open ? PANEL_WIDTH : 0,
+        marginLeft: open ? 12 : 0,
         opacity: open ? 1 : 0,
       }}
       transition={{
@@ -38,7 +39,7 @@ export function ChatHistorySidebar({ open }: { open: boolean }) {
         damping: 32,
         mass: 0.85,
       }}
-      className="relative ml-3 flex h-full shrink-0 overflow-hidden"
+      className="relative flex h-full shrink-0 overflow-hidden"
       aria-hidden={!open}
     >
       <div
