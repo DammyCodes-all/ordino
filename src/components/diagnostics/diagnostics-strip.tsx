@@ -20,7 +20,7 @@ export function DiagnosticsStrip() {
   if (!diagnosticsOpen) return null;
 
   return (
-    <div className="absolute inset-x-0 top-14 z-20 border-b border-border-subtle bg-surface/95 px-5 py-4 backdrop-blur-md sm:px-6">
+    <div className="absolute inset-x-0 top-14 z-20 border-b border-border-subtle bg-surface/60 px-5 py-4 backdrop-blur-[2px] sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <div>

@@ -38,7 +38,7 @@ export function PdfPreview({ variant: _variant = "panel" }: PdfPreviewProps) {
         {previewUrl ? (
           <a
             href={previewUrl}
-            download={downloadFileName(document.meta.title)}
+            download={downloadFileName(document.meta.title, document.version)}
             className="text-sm text-accent hover:underline"
           >
             Download

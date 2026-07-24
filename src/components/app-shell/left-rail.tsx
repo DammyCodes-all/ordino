@@ -67,7 +67,7 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface/80 py-6 backdrop-blur-md">
+    <aside className="ml-10 mt-10 mb-10 flex w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
       <div className="mb-8 flex flex-col items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary">
           <span className="font-display text-sm text-primary-foreground">

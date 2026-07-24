@@ -1,36 +1,58 @@
 import { pdf } from "@react-pdf/renderer";
-import { DocumentRenderer } from "../components/DocumentRenderer";
-import { registerDefaultFonts } from "../fonts";
 import type { DocumentState } from "../../contracts/document";
 import type { InternalRenderResult } from "../../contracts/rendering";
-
+import type { AppError } from "../../contracts/result";
+import {
+  chunkByPageBreaks,
+  DocumentRenderer,
+} from "../components/DocumentRenderer";
+import { registerDefaultFonts } from "../fonts";
 
 export async function renderDocumentToPdf(
   document: DocumentState,
   signal?: AbortSignal,
-): Promise<{ success: true; data: InternalRenderResult } | { success: false; error: any }> {
+): Promise<
+  | { success: true; data: InternalRenderResult }
+  | { success: false; error: AppError }
+> {
   try {
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: { code: "ABORTED", message: "Render aborted", retryable: false },
+      };
+    }
     registerDefaultFonts();
 
-    const docElement = <DocumentRenderer document={document} />;
+    const pdfInstance = pdf(<DocumentRenderer document={document} />);
+    const blob = await pdfInstance.toBlob();
 
-    const pdfInstance = pdf(docElement);
-    // @react-pdf/renderer exposes toBuffer in Node environments
-    const buffer: Buffer = await pdfInstance.toBuffer();
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: { code: "ABORTED", message: "Render aborted", retryable: false },
+      };
+    }
 
-    // Convert Buffer to Blob for contract compatibility
-    const blob = new Blob([buffer], { type: "application/pdf" });
+    const pages = chunkByPageBreaks(document.nodes);
     const result: InternalRenderResult = {
       documentId: document.documentId,
       documentVersion: document.version,
       pdfBlob: blob,
-      pageCount: 1,
+      pageCount: Math.max(1, pages.length),
       renderedAt: new Date().toISOString(),
-    } as any;
+    };
 
     return { success: true, data: result };
-  } catch (err: any) {
-    return { success: false, error: { code: "RENDER_FAILED", message: String(err), retryable: false } };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: {
+        code: "RENDER_FAILED",
+        message: err instanceof Error ? err.message : String(err),
+        retryable: false,
+      },
+    };
   }
 }
 
