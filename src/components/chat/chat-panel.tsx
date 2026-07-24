@@ -63,7 +63,7 @@ export function ChatPanel() {
     <section className="relative flex h-full min-w-0 flex-1 flex-col">
       <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-3 sm:px-4">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium tracking-tight">Ordino</p>
+          <p className="brand-wordmark-solid truncate text-lg">ordino</p>
           <p className="truncate text-[11px] text-muted-dim">
             {chatNarrow ? "Chat · preview open" : "Chat-only document studio"}
           </p>
@@ -97,11 +97,9 @@ export function ChatPanel() {
       <div className="flex-1 overflow-y-auto px-3 sm:px-4">
         {empty ? (
           <div className="mx-auto flex min-h-[calc(100%-2rem)] max-w-2xl flex-col items-center justify-center gap-3 py-12 text-center animate-fade-up">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-muted-dim">
-              Ordino
-            </p>
+            <p className="brand-wordmark text-5xl sm:text-6xl">ordino</p>
             <h1
-              className={`font-medium tracking-tight text-foreground ${
+              className={`mt-1 font-medium tracking-tight text-foreground ${
                 chatNarrow ? "text-xl" : "max-w-xl text-2xl sm:text-3xl"
               }`}
             >

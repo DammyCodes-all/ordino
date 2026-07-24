@@ -69,8 +69,10 @@ export function LeftRail() {
   return (
     <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface py-3">
       <div className="mb-4 flex flex-col items-center gap-1.5">
-        <div className="flex size-9 items-center justify-center bg-primary text-xs font-semibold tracking-tight text-primary-foreground">
-          Or
+        <div className="flex size-9 items-center justify-center bg-primary">
+          <span className="font-display text-[11px] text-primary-foreground">
+            or
+          </span>
         </div>
         <span
           className={`size-1.5 rounded-full ${statusTone}`}
@@ -196,8 +198,8 @@ export function LeftRail() {
             />
           )}
         </IconButton>
-        <p className="rotate-180 text-[9px] tracking-[0.2em] text-muted-dim [writing-mode:vertical-rl]">
-          ORDINO
+        <p className="brand-wordmark-solid rotate-180 text-[10px] tracking-[0.12em] [writing-mode:vertical-rl]">
+          ordino
         </p>
       </div>
     </aside>
