@@ -211,6 +211,7 @@ export async function runRevisionLoop(
   signal?: AbortSignal,
 ): Promise<AppResult<{ document: DocumentState }>> {
   let currentDoc = document;
+  const history: string[] = [];
   let steps = 0;
 
   while (steps < MAX_WRITER_STEPS) {
@@ -223,14 +224,12 @@ export async function runRevisionLoop(
     steps++;
 
     const outline = currentDoc.nodes.map((n, i) => ({ id: n.id, index: i, type: n.type }));
-    const prompt = `You are revising a document based on review feedback.
+    const context: CombinedRevisionContext = { validationIssues, visualIssues };
+    let prompt = buildRevisionPrompt(context, outline);
 
-Current outline: ${JSON.stringify(outline)}
-
-Validation issues: ${JSON.stringify(validationIssues)}
-Visual review issues: ${JSON.stringify(visualIssues)}
-
-Fix one issue at a time using the available actions. Output finalize when all issues are resolved or cannot be fixed.`;
+    if (history.length > 0) {
+      prompt += `\n\n[Revision history]\n${history.join("\n")}`;
+    }
 
     const res = await generateStructuredOutput(
       client,
@@ -258,6 +257,9 @@ Fix one issue at a time using the available actions. Output finalize when all is
     const r = executeAction(action, currentDoc, toolExecutor);
     if (r.result.success) {
       currentDoc = r.updatedDoc;
+      history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
+    } else {
+      history.push(`  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`);
     }
   }
 
@@ -362,11 +364,12 @@ function toolCallToAction(tc: ToolCallResult): WriterAction | null {
 
 export async function runWriterLoopWithTools(
   client: GoogleAIClient,
+  document: DocumentState,
   plan: DocumentPlan,
   toolExecutor: ToolExecutor,
   signal?: AbortSignal,
 ): Promise<AppResult<{ document: DocumentState; message: string; history: string[] }>> {
-  const currentDoc = createDocumentFromPlan(plan);
+  let currentDoc: DocumentState = document;
   const tools = buildWriterTools();
   const history: string[] = [];
   let steps = 0;
