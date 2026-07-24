@@ -9,10 +9,12 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
 import { ChatOutline } from "@/components/document-outline/chat-outline";
+import { usePdfAnalysis } from "@/components/pdf-analysis/pdf-analysis-context";
 import { ReferenceChips } from "@/components/reference-images/reference-chips";
 import { ReviewFindings } from "@/components/review/review-findings";
 import { StatusPanel } from "@/components/status-panel/status-panel";
 import { AppIcon } from "@/components/ui/app-icon";
+import { GemmaVoicePanel } from "@/components/voice/gemma-voice-panel";
 
 export function ChatPanel() {
   const {
@@ -25,10 +27,12 @@ export function ChatPanel() {
     publishedPreview,
     previewOpen,
     setPreviewOpen,
+    setDisclosureOpen,
     sendPrompt,
     cancelTurn,
     addReference,
   } = useSession();
+  const { startFromUpload } = usePdfAnalysis();
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -54,9 +58,7 @@ export function ChatPanel() {
     event?.preventDefault();
     const text = draft;
     if (!text.trim() || actionsDisabled || generationBlocked) return;
-    if (cloudDisclosureAccepted) {
-      setDraft("");
-    }
+    setDraft("");
     await sendPrompt(text);
   }
 
@@ -181,7 +183,8 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 px-6 py-5 sm:px-8">
+      <div className="shrink-0 px-6 py-5 pb-[calc(1.25rem+var(--mobile-nav-height)+var(--safe-bottom))] sm:px-8 md:pb-5">
+        <GemmaVoicePanel />
         <ReviewFindings />
         <ChatOutline />
         <form
@@ -198,17 +201,29 @@ export function ChatPanel() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="application/pdf,.pdf,image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) void addReference(file);
                 event.target.value = "";
+                if (!file) return;
+                const isPdf =
+                  file.type === "application/pdf" ||
+                  file.name.toLowerCase().endsWith(".pdf");
+                if (isPdf) {
+                  if (!cloudDisclosureAccepted) {
+                    setDisclosureOpen(true);
+                    return;
+                  }
+                  void startFromUpload(file);
+                  return;
+                }
+                void addReference(file);
               }}
             />
             <button
               type="button"
-              title="Attach reference image"
+              title="Attach PDF or reference image"
               disabled={actionsDisabled}
               onClick={() => fileRef.current?.click()}
               className="mb-0.5 flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
@@ -216,7 +231,7 @@ export function ChatPanel() {
               <AppIcon
                 icon={AttachmentIcon}
                 size={20}
-                title="Attach reference image"
+                title="Attach PDF or reference image"
               />
             </button>
             <textarea
