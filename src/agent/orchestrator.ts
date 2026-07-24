@@ -213,7 +213,7 @@ export class AgentOrchestrator implements AgentPort {
         finalRender: lastValidRender!,
         validation: finalValidation,
         visualReview: finalVisualReview,
-        reviewIterations,
+        reviewIterations: reviewIterations as 0 | 1 | 2 | 3,
         assistantMessage: "Document has been updated successfully.",
       });
     } catch (err: any) {

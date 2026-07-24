@@ -108,7 +108,7 @@ export class FakePdfPort implements PdfPort {
   async render(
     document: DocumentState,
     signal?: AbortSignal,
-  ): Promise<ReturnType<PdfPort["render"]>> {
+  ): ReturnType<PdfPort["render"]> {
     return createSuccessResult({
       documentId: document.documentId,
       documentVersion: document.version,
@@ -121,7 +121,7 @@ export class FakePdfPort implements PdfPort {
   async rasterize(
     render: InternalRenderResult,
     signal?: AbortSignal,
-  ): Promise<ReturnType<PdfPort["rasterize"]>> {
+  ): ReturnType<PdfPort["rasterize"]> {
     return createSuccessResult([
       {
         documentVersion: render.documentVersion,
@@ -138,7 +138,7 @@ export class FakePdfPort implements PdfPort {
     document: DocumentState,
     existingRender?: InternalRenderResult,
     signal?: AbortSignal,
-  ): Promise<ReturnType<PdfPort["export"]>> {
+  ): ReturnType<PdfPort["export"]> {
     return createSuccessResult({
       documentId: document.documentId,
       documentVersion: document.version,

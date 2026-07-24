@@ -1,6 +1,6 @@
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { aiGenerateRequestSchema } from "./configuration";
+import { aiGenerateRequestSchema } from "@/google-ai";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
