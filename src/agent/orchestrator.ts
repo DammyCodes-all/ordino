@@ -61,7 +61,7 @@ export class AgentOrchestrator implements AgentPort {
     let currentDoc = input.document;
     const createdCheckpoints: DocumentCheckpoint[] = [];
     let lastValidRender: InternalRenderResult | null = null;
-    let reviewIterations: 0 | 1 | 2 | 3 = 0;
+    let reviewIterations: 0 | 1 = 0;
 
     try {
       this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
@@ -134,11 +134,11 @@ export class AgentOrchestrator implements AgentPort {
 
       this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
-      // Review Loop (Max 3 iterations)
+      // Review Loop (Max 1 iteration)
       let finalValidation: ValidationReport = { documentVersion: currentDoc.version, pass: true, issues: [] };
       let finalVisualReview: VisualReviewResult | null = null;
 
-      while (reviewIterations < 3) {
+      while (reviewIterations < 1) {
         // 3. Rendering
         this.emit("rendering", `Rendering document version ${currentDoc.version}`);
         this.narrate("Content complete — rendering the PDF…");
@@ -223,7 +223,7 @@ export class AgentOrchestrator implements AgentPort {
 
         // 7. Revising
         reviewIterations++;
-        if (reviewIterations >= 3) {
+        if (reviewIterations >= 1) {
           this.narrate("Reached maximum revision passes — delivering best version.");
           break; // Maximum iterations reached
         }
@@ -277,7 +277,7 @@ export class AgentOrchestrator implements AgentPort {
         exportResult,
         validation: finalValidation,
         visualReview: finalVisualReview,
-        reviewIterations: reviewIterations as 0 | 1 | 2 | 3,
+        reviewIterations: reviewIterations as 0 | 1,
         assistantMessage: `I've updated “${currentDoc.meta.title || "your document"}”. Open the preview to review it, or tell me what to change.`,
       });
     } catch (err: any) {
