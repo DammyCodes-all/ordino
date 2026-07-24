@@ -17,6 +17,7 @@ import {
   speechRecognitionSupported,
   speechSynthesisSupported,
   stopSpeaking,
+  unlockSpeech,
 } from "@/lib/speech";
 
 type VoiceTurn = {
@@ -102,6 +103,8 @@ export function GemmaVoicePanel() {
   }
 
   async function handleIntroAndOpen() {
+    // Must run in the click gesture before any await, or Chromium mutes TTS.
+    unlockSpeech();
     setOpen(true);
     if (!speechSynthesisSupported()) {
       setError("This browser cannot speak aloud. Try Chrome or Edge.");
@@ -133,6 +136,7 @@ export function GemmaVoicePanel() {
   }
 
   async function handleReadAloud() {
+    unlockSpeech();
     if (!speechSynthesisSupported()) {
       setError("Speech synthesis is not available in this browser.");
       return;
@@ -155,6 +159,7 @@ export function GemmaVoicePanel() {
   }
 
   async function handleTalk() {
+    unlockSpeech();
     if (!speechRecognitionSupported()) {
       setError(
         "Microphone speech recognition needs Chrome or Edge over HTTPS/localhost.",
