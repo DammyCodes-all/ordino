@@ -9,6 +9,7 @@ export function NarrationControls() {
     selectedHighlightId,
     playNarration,
     pauseNarration,
+    resumeNarration,
     stopNarration,
   } = usePdfAnalysis();
 
@@ -32,14 +33,24 @@ export function NarrationControls() {
       >
         Play selected
       </button>
-      <button
-        type="button"
-        disabled={narrationStatus !== "playing"}
-        onClick={pauseNarration}
-        className="rounded-full border border-border px-3 py-1.5 text-sm disabled:opacity-40"
-      >
-        Pause
-      </button>
+      {narrationStatus === "paused" ? (
+        <button
+          type="button"
+          onClick={resumeNarration}
+          className="rounded-full border border-border px-3 py-1.5 text-sm"
+        >
+          Resume
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={narrationStatus !== "playing"}
+          onClick={pauseNarration}
+          className="rounded-full border border-border px-3 py-1.5 text-sm disabled:opacity-40"
+        >
+          Pause
+        </button>
+      )}
       <button
         type="button"
         disabled={narrationStatus === "idle"}
