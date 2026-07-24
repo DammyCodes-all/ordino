@@ -7,12 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "4.0.23",
+    "@react-pdf/renderer": "4.5.1",
+    "ai": "7.0.37",
+    "idb": "8.0.3",
     "next": "16.2.11",
+    "pdfjs-dist": "6.1.200",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
@@ -23,6 +31,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "shadcn": "^4.14.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.10"
   }
 }

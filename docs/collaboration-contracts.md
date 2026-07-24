@@ -4,9 +4,9 @@ This document is the source of truth for parallel development. All three workstr
 
 ## Locked product decisions
 
-- The browser calls Ollama directly at a configurable local URL; there is no application backend.
-- Ollama CORS setup is documented and checked during startup diagnostics.
-- One configurable vision-capable Gemma model performs planning, writing, visual review, and revision.
+- Inference is cloud-only through Google AI Studio using AI SDK 7 and `@ai-sdk/google`.
+- `GOOGLE_GENERATIVE_AI_API_KEY` is server-only and must never use a `NEXT_PUBLIC_` prefix or enter client bundles. The browser calls same-origin Next.js route handlers under `src/app/api/ai/**`.
+- One configurable vision-capable Google AI Studio model performs planning, writing, visual review, and revision.
 - Documents are English-only for v1.
 - Document storage is a flat, ordered node array.
 - The application generates every ID with `crypto.randomUUID()`; the model never creates IDs.
@@ -20,8 +20,9 @@ This document is the source of truth for parallel development. All three workstr
 - Editing is chat-only. There is no direct block or WYSIWYG editor in v1.
 - Only one cancellable agent turn can run at once. New prompts are disabled rather than queued.
 - Session JSON persists in IndexedDB. PDFs, rasterized pages, object URLs, and tool traces do not persist.
-- Export is always generated from current document state and is not blocked by unresolved review issues.
+- Export is always generated locally from current document state and is not blocked by unresolved review issues.
 - Checkpoints support undo and failure recovery; the application does not automatically judge or roll back visual quality.
+- Document/PDF processing and IndexedDB persistence remain local, but generation and review require internet access. Prompts, relevant reference images, and rasterized PDF pages are sent to Google for processing; the UI must explicitly disclose this cloud data transfer before use.
 
 ## Repository ownership
 
@@ -29,8 +30,8 @@ This document is the source of truth for parallel development. All three workstr
 |---|---|
 | `src/contracts/**`, dependency files, shared test configuration | Integrator during Gate 0; frozen afterward |
 | `src/document/**`, `src/pdf/**` | Teammate A |
-| `src/agent/**`, `src/ollama/**`, `src/review/**` | Teammate B |
-| `src/app/**`, `src/components/**`, `src/storage/**`, `src/diagnostics/**`, `public/**`, `next.config.ts` | Teammate C after Gate 0 |
+| `src/agent/**`, `src/google-ai/**`, `src/review/**`, `src/app/api/ai/**` | Teammate B |
+| `src/app/**` except `src/app/api/ai/**`, `src/components/**`, `src/storage/**`, `src/diagnostics/**`, `public/**`, `next.config.ts` | Teammate C after Gate 0 |
 
 Do not edit another workstream's directory. Cross-module behavior is accessed only through the ports in this document.
 
@@ -42,7 +43,7 @@ The Markdown plans alone are not a sufficient integration boundary. Complete and
 2. Export them from `src/contracts/index.ts` and confirm each teammate can import them through `@/contracts`.
 3. Install and lock all approved runtime and test dependencies. After this commit, A and B must not run package-install commands.
 4. Add the shared test command/configuration once; individual tests stay inside each owned directory.
-5. Have the integrator, or Teammate B acting before branch fan-out, run a minimal browser-to-Ollama spike and freeze the browser-compatible adapter decision.
+5. Have the integrator, or Teammate B acting before branch fan-out, run a minimal browser-to-same-origin-route-to-Google AI Studio spike using AI SDK 7 and `@ai-sdk/google`; verify that `GOOGLE_GENERATIVE_AI_API_KEY` is read only by the server route and absent from client bundles.
 6. Confirm `pnpm lint`, the shared test command, and `pnpm build` pass.
 7. Tag or record this commit hash. All three branches/agents start from exactly that commit.
 8. Create one separate Git branch and worktree/checkout per agent. Never run all three agents in the same working directory.
@@ -115,9 +116,13 @@ export type ErrorCode =
   | "STALE_RENDER"
   | "RENDER_FAILED"
   | "RASTERIZATION_FAILED"
-  | "OLLAMA_OFFLINE"
-  | "MODEL_NOT_FOUND"
+  | "MISSING_API_KEY"
+  | "MODEL_AUTH_FAILED"
+  | "MODEL_RATE_LIMITED"
+  | "MODEL_SERVICE_UNAVAILABLE"
+  | "MODEL_UNAVAILABLE"
   | "VISION_UNAVAILABLE"
+  | "INTERNET_REQUIRED"
   | "INVALID_MODEL_OUTPUT"
   | "MODEL_REQUEST_FAILED"
   | "ABORTED"
@@ -498,7 +503,7 @@ export interface ReferenceImage {
 }
 ```
 
-Reference images persist until removed. They are sent during planning or an explicitly image-related user turn, but never during PDF visual review.
+Reference images persist locally until removed. They are sent to Google AI Studio during planning or an explicitly image-related user turn, but never during PDF visual review. Rasterized PDF pages are instead sent to Google AI Studio for visual review. Prompts and these transmitted images are cloud-processed data and must be covered by the UI's explicit disclosure.
 
 ## PDF port
 
@@ -757,29 +762,37 @@ B collects every user-turn and review checkpoint created during the run and retu
 
 C persists the current user message when the turn starts but passes B a pre-turn conversation snapshot. C appends `assistantMessage` only after successful completion, preventing the current prompt from being sent twice.
 
-The Ollama/model adapter is internal to Teammate B and is created from `OllamaConfiguration`; it is not a second shared state owner. For startup composition, B exports this narrow diagnostic port:
+The Google AI Studio adapter and same-origin AI route handlers are internal to Teammate B and use `GoogleAIConfiguration`; they are not a second shared state owner. B's browser-facing `AgentPort` may orchestrate calls to `src/app/api/ai/**`, while document/PDF state remains in the browser and no secret enters client bundles. For startup composition, B exports this narrow diagnostic port:
 
 ```ts
 export interface ModelDiagnosticPort {
-  checkReachable(signal?: AbortSignal): Promise<AppResult<void>>;
-  checkModelInstalled(signal?: AbortSignal): Promise<AppResult<void>>;
+  checkApiKey(signal?: AbortSignal): Promise<AppResult<void>>;
+  checkAuthentication(signal?: AbortSignal): Promise<AppResult<void>>;
+  checkService(signal?: AbortSignal): Promise<AppResult<void>>;
+  checkModelAvailable(signal?: AbortSignal): Promise<AppResult<void>>;
   warmUpText(signal?: AbortSignal): Promise<AppResult<void>>;
   checkVision(signal?: AbortSignal): Promise<AppResult<void>>;
 }
 ```
 
-## Ollama configuration and diagnostics
+## Google AI Studio configuration and diagnostics
 
 ```ts
-export interface OllamaConfiguration {
-  provider: "ollama";
-  baseUrl: string;
+export interface GoogleAIConfiguration {
+  provider: "google-ai-studio";
   modelId: string;
   transportRetries: number;
 }
 
+// The API key is intentionally absent. Server routes read it from the
+// server-only GOOGLE_GENERATIVE_AI_API_KEY environment variable.
+
 export type DiagnosticName =
-  | "ollama"
+  | "api_key"
+  | "authentication"
+  | "rate_limit"
+  | "internet"
+  | "google_ai_service"
   | "model"
   | "vision"
   | "pdf_renderer"
@@ -813,19 +826,21 @@ export function runStartupDiagnostics(
 
 `validateDocument` and `validatePdf` are the deliberate exceptions to the universal `AppResult` rule: they always return a `ValidationReport`. PDF parsing problems become a `PDF_PARSE_FAILED` issue. Rendering, rasterization, and exporting return failed `AppResult`s for operational failures.
 
-AI SDK transport retries are set to two. Successful but invalid structured output receives one explicit Zod-guided repair request. Planning failure shows Retry; partial generation preserves valid nodes; vision failure exports the current document; revision failure keeps the pre-revision checkpoint.
+AI SDK 7 transport retries are set to two. Successful but invalid structured output receives one explicit Zod-guided repair request. Diagnostics and errors distinguish a missing server key, authentication failure, rate limiting, internet failure, Google service unavailability, configured-model unavailability, and vision unavailability. Planning failure shows Retry; partial generation preserves valid nodes; vision failure exports the current document; revision failure keeps the pre-revision checkpoint.
 
 ## Required review flow
 
 ```text
 Prompt + relevant reference images
+  → same-origin AI route → Google AI Studio
   → structured plan
   → document tool loop
   → finalizeDocument
   → hidden render
   → structural and PDF validation
-  → rasterize all pages
-  → read-only vision review
+  → rasterize all pages locally
+  → send rasterized pages through same-origin AI route
+  → Google AI Studio read-only vision review
   → if issues: checkpoint, revision-agent tool loop, hidden rerender
   → repeat up to three reviews
   → publish final preview
@@ -853,12 +868,12 @@ export function validatePdf(
 // src/agent/index.ts — Teammate B
 export function createAgent(
   dependencies: AgentRuntimeDependencies,
-  configuration: OllamaConfiguration,
+  configuration: GoogleAIConfiguration,
 ): AgentPort;
 
-// src/ollama/index.ts — Teammate B
+// src/google-ai/index.ts — Teammate B
 export function createModelDiagnosticPort(
-  configuration: OllamaConfiguration,
+  configuration: GoogleAIConfiguration,
 ): ModelDiagnosticPort;
 ```
 
@@ -881,10 +896,10 @@ A complete demo must show:
 2. Prompt plus optional persistent reference images.
 3. Automatic planning and tool-driven document creation.
 4. Hidden PDF rendering and deterministic validation.
-5. Full-document Gemma vision review.
+5. Full-document Google AI Studio vision review, with rasterized pages disclosed as cloud-transferred data.
 6. AI-driven revision, with at most three review rounds.
 7. Final-only PDF preview publication.
 8. Follow-up chat editing through the same tools.
 9. Undo through checkpoints.
 10. IndexedDB session recovery after refresh.
-11. Current-state PDF export entirely offline.
+11. Current-state PDF export generated locally; generation and visual review clearly require internet access.
