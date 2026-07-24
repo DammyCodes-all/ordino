@@ -215,7 +215,7 @@ export class AgentOrchestrator implements AgentPort {
 
       this.emit("finalizing", "Finalizing agent turn");
 
-      const exportRes = await this.dependencies.pdf.export(currentDoc, lastValidRender, input.signal);
+      const exportRes = await this.dependencies.pdf.export(currentDoc, lastValidRender ?? undefined, input.signal);
       const exportResult = exportRes.success ? exportRes.data : null;
 
       this.emit("ready", "Turn completed successfully");
