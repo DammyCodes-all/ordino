@@ -82,22 +82,6 @@ export function LeftRail() {
         >
           <AppIcon icon={SidebarRightIcon} size={20} title="Toggle preview" />
         </IconButton>
-
-        <IconButton
-          label="Cloud disclosure"
-          onClick={() => setDisclosureOpen(true)}
-          active={disclosureOpen || !cloudDisclosureAccepted}
-        >
-          <AppIcon icon={CloudIcon} size={20} title="Cloud disclosure" />
-        </IconButton>
-
-        <IconButton
-          label="Diagnostics"
-          onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
-          active={diagnosticsOpen || generationBlocked}
-        >
-          <AppIcon icon={Alert02Icon} size={20} title="Diagnostics" />
-        </IconButton>
       </nav>
 
       <div className="mb-5 flex flex-col items-center gap-3">

@@ -21,6 +21,7 @@ import type {
   AgentTurnState,
   ConversationMessage,
   DiagnosticCheck,
+  DiagnosticName,
   DocumentCheckpoint,
   DocumentState,
   GoogleAIHealthResponse,
@@ -32,9 +33,37 @@ import type {
   WorkflowEvent,
   WorkflowStage,
 } from "@/contracts";
-import { googleAIHealthResponseSchema } from "@/contracts";
+import { DEFAULT_GOOGLE_AI_CONFIGURATION } from "@/contracts";
+import { createMemoryStorageCheck, runStartupDiagnostics } from "@/diagnostics";
 import { createDocument } from "@/document";
+import {
+  createErrorResult,
+  createModelDiagnosticPort,
+  createSuccessResult,
+} from "@/google-ai";
 import { createId } from "@/lib/document-factory";
+
+const INITIAL_DIAGNOSTIC_NAMES: DiagnosticName[] = [
+  "api_key",
+  "authentication",
+  "google_ai_service",
+  "model",
+  "vision",
+  "internet",
+  "rate_limit",
+  "storage",
+  "pdf_renderer",
+  "export",
+];
+
+const INITIAL_DIAGNOSTICS: DiagnosticCheck[] = INITIAL_DIAGNOSTIC_NAMES.map(
+  (name) => ({
+    name,
+    status: "checking",
+    message: `Checking ${name.replaceAll("_", " ")}…`,
+    remediation: null,
+  }),
+);
 
 const STAGE_LABELS: Record<WorkflowStage, string> = {
   idle: "Ready",
@@ -227,39 +256,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
-  const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
-    {
-      name: "google_ai_service",
-      status: "checking",
-      message: "Checking Google AI Studio…",
-      remediation: null,
-    },
-    {
-      name: "api_key",
-      status: "checking",
-      message: "Checking API key configuration…",
-      remediation: null,
-    },
-    {
-      name: "storage",
-      status: "ready",
-      message:
-        "Local session store available (in-memory until persistence lands).",
-      remediation: null,
-    },
-    {
-      name: "pdf_renderer",
-      status: "ready",
-      message: "Browser PDF renderer ready (A DocumentRenderer + toBlob).",
-      remediation: null,
-    },
-    {
-      name: "export",
-      status: "ready",
-      message: "PDF export ready via session PdfPort.",
-      remediation: null,
-    },
-  ]);
+  const [diagnosticChecks, setDiagnosticChecks] =
+    useState<DiagnosticCheck[]>(INITIAL_DIAGNOSTICS);
+  const [diagnosticsReady, setDiagnosticsReady] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const documentRef = useRef(document);
@@ -319,97 +318,104 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshHealth = useCallback(async () => {
-    setDiagnosticChecks((prev) =>
-      prev.map((check) =>
-        check.name === "google_ai_service" || check.name === "api_key"
-          ? {
-              ...check,
-              status: "checking",
-              message:
-                check.name === "api_key"
-                  ? "Checking API key configuration…"
-                  : "Checking Google AI Studio…",
-              remediation: null,
-            }
-          : check,
-      ),
+    setDiagnosticChecks(
+      INITIAL_DIAGNOSTIC_NAMES.map((name) => ({
+        name,
+        status: "checking" as const,
+        message: `Checking ${name.replaceAll("_", " ")}…`,
+        remediation: null,
+      })),
     );
+    setDiagnosticsReady(false);
+
+    const model = createModelDiagnosticPort(DEFAULT_GOOGLE_AI_CONFIGURATION);
+    const probeDocument = createDocument({
+      title: "Diagnostics probe",
+      documentType: "Document",
+      audience: "Internal",
+      writingStyle: "professional",
+      instructions: null,
+      pageLimit: null,
+    });
 
     try {
-      const response = await fetch("/api/ai/health", { cache: "no-store" });
-      const json: unknown = await response.json();
-      const parsed = googleAIHealthResponseSchema.safeParse(json);
-      if (!parsed.success) {
-        setHealth(null);
-        setDiagnosticChecks((prev) =>
-          prev.map((check) =>
-            check.name === "google_ai_service" || check.name === "api_key"
-              ? {
-                  ...check,
-                  status: "failed",
-                  message: "Unexpected health response.",
-                  remediation:
-                    "Retry the health check or restart the dev server.",
-                }
-              : check,
-          ),
-        );
-        return;
-      }
+      const result = await runStartupDiagnostics({
+        model,
+        checkStorage: createMemoryStorageCheck(),
+        checkPdfRenderer: async (signal) => {
+          const rendered = await pdfPort.render(probeDocument, signal);
+          if (!rendered.success) {
+            return createErrorResult(
+              rendered.error.code,
+              rendered.error.message,
+              rendered.error.retryable,
+            );
+          }
+          return createSuccessResult(undefined);
+        },
+        checkExport: async (signal) => {
+          const exported = await pdfPort.export(
+            probeDocument,
+            undefined,
+            signal,
+          );
+          if (!exported.success) {
+            return createErrorResult(
+              exported.error.code,
+              exported.error.message,
+              exported.error.retryable,
+            );
+          }
+          return createSuccessResult(undefined);
+        },
+      });
 
-      setHealth(parsed.data);
-      const ready = parsed.data.status === "ready";
-      const notConfigured = parsed.data.status === "not_configured";
-      setDiagnosticChecks((prev) =>
-        prev.map((check) => {
-          if (check.name === "api_key") {
-            return {
-              ...check,
-              status: notConfigured ? "failed" : ready ? "ready" : "failed",
-              message: parsed.data.message,
-              remediation: notConfigured
-                ? "Set GOOGLE_GENERATIVE_AI_API_KEY in the server environment (never NEXT_PUBLIC_)."
-                : ready
-                  ? null
-                  : "Verify the server key and model configuration.",
-            };
-          }
-          if (check.name === "google_ai_service") {
-            return {
-              ...check,
-              status: ready ? "ready" : "failed",
-              message: parsed.data.message,
-              remediation: ready
-                ? null
-                : "Confirm internet access and Google AI Studio availability.",
-            };
-          }
-          return check;
-        }),
+      setDiagnosticChecks(result.checks);
+      setDiagnosticsReady(result.ready);
+
+      const apiKey = result.checks.find((check) => check.name === "api_key");
+      const service = result.checks.find(
+        (check) => check.name === "google_ai_service",
       );
-    } catch {
+      const modelCheck = result.checks.find((check) => check.name === "model");
+      setHealth({
+        provider: "google-ai-studio",
+        modelId: DEFAULT_GOOGLE_AI_CONFIGURATION.modelId,
+        status: result.ready
+          ? "ready"
+          : apiKey?.status === "failed"
+            ? "not_configured"
+            : "unavailable",
+        message:
+          service?.message ||
+          modelCheck?.message ||
+          apiKey?.message ||
+          (result.ready
+            ? "All startup diagnostics passed."
+            : "Startup diagnostics reported failures."),
+      });
+    } catch (error) {
+      setDiagnosticsReady(false);
       setHealth(null);
-      setDiagnosticChecks((prev) =>
-        prev.map((check) =>
-          check.name === "google_ai_service" || check.name === "api_key"
-            ? {
-                ...check,
-                status: "failed",
-                message: "Could not reach the health route.",
-                remediation:
-                  "Confirm the Next.js server is running and online.",
-              }
-            : check,
-        ),
+      setDiagnosticChecks(
+        INITIAL_DIAGNOSTIC_NAMES.map((name) => ({
+          name,
+          status: "failed" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Could not complete startup diagnostics.",
+          remediation: "Confirm the Next.js server is running and online.",
+        })),
       );
     }
-  }, []);
+  }, [pdfPort]);
 
   useEffect(() => {
     void refreshHealth();
   }, [refreshHealth]);
 
-  const generationBlocked = health?.status !== "ready";
+  const generationBlocked = !diagnosticsReady;
 
   const outline = useMemo(
     () => documentPort.outline(document) as OutlineItem[],
