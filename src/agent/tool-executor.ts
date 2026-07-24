@@ -30,8 +30,11 @@ export class ToolExecutor {
     });
 
     if (res.success) {
+      const receipt = "nodeId" in res.data.receipt
+        ? res.data.receipt
+        : { ...res.data.receipt, nodeId: "" };
       return {
-        result: createSuccessResult(res.data.receipt as AddNodeReceipt),
+        result: createSuccessResult(receipt as AddNodeReceipt),
         updatedDoc: res.data.document,
       };
     }
