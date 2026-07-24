@@ -14,7 +14,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function DocumentOutline() {
-  const { outline, document } = useSession();
+  const { outline } = useSession();
 
   if (outline.length === 0) {
     return (
@@ -26,9 +26,6 @@ export function DocumentOutline() {
 
   return (
     <div className="flex flex-col gap-1 px-3 py-3">
-      <p className="mb-2 px-1 text-[11px] uppercase tracking-wider text-muted-dim">
-        {document.meta.title}
-      </p>
       {outline.map((item) => (
         <div
           key={item.id}

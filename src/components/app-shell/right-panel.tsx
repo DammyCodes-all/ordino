@@ -2,25 +2,18 @@
 
 import { useSession } from "@/components/app-shell/session-context";
 import { DocumentOutline } from "@/components/document-outline/document-outline";
-import { PdfPreview } from "@/components/pdf-preview/pdf-preview";
-
-const TABS = [
-  { id: "outline" as const, label: "Outline" },
-  { id: "preview" as const, label: "Preview" },
-];
 
 export function RightPanel() {
   const {
     rightPanelOpen,
-    rightPanelTab,
     setRightPanelOpen,
-    setRightPanelTab,
     actionsDisabled,
     checkpoints,
     publishedPreview,
     turn,
     undo,
     exportPdf,
+    document,
   } = useSession();
 
   if (!rightPanelOpen) {
@@ -37,9 +30,14 @@ export function RightPanel() {
       />
       <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[var(--panel-width)] flex-col border-l border-border-subtle bg-surface shadow-2xl md:static md:z-auto md:shadow-none">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-subtle px-3">
-          <p className="flex-1 truncate px-1 text-sm font-medium tracking-tight">
-            Document
-          </p>
+          <div className="min-w-0 flex-1 px-1">
+            <p className="truncate text-sm font-medium tracking-tight">
+              Outline
+            </p>
+            <p className="truncate text-[11px] text-muted-dim">
+              {document.meta.title}
+            </p>
+          </div>
           <button
             type="button"
             disabled={actionsDisabled || checkpoints.length === 0}
@@ -67,28 +65,12 @@ export function RightPanel() {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {rightPanelTab === "outline" ? <DocumentOutline /> : null}
-          {rightPanelTab === "preview" ? <PdfPreview /> : null}
+          <DocumentOutline />
         </div>
 
-        <nav className="shrink-0 border-t border-border-subtle bg-surface px-3 py-3">
-          <div className="flex gap-1 rounded-xl bg-background p-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setRightPanelTab(tab.id)}
-                className={`flex-1 rounded-lg px-2 py-2 text-xs transition-colors ${
-                  rightPanelTab === tab.id
-                    ? "bg-surface-raised text-foreground"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </nav>
+        <p className="shrink-0 border-t border-border-subtle px-4 py-3 text-[11px] leading-relaxed text-muted-dim">
+          Read-only structure of the document. Editing is chat-only in v1.
+        </p>
       </aside>
     </>
   );
