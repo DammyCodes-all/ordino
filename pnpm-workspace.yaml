@@ -1,4 +1,5 @@
 allowBuilds:
+  canvas: true
   sharp: false
 ignoredBuiltDependencies:
   - sharp
