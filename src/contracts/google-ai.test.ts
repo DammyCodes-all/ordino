@@ -5,26 +5,14 @@ import {
 } from "./google-ai";
 
 describe("Google AI Studio contracts", () => {
-  it("keeps AI calls on a same-origin API route", () => {
+  it("validates server-side Google AI configuration", () => {
     const result = googleAIConfigurationSchema.safeParse({
       provider: "google-ai-studio",
       modelId: "gemini-2.5-flash",
       transportRetries: 2,
-      routeBaseUrl: "/api/ai",
     });
 
     expect(result.success).toBe(true);
-  });
-
-  it("rejects an external browser API base URL", () => {
-    const result = googleAIConfigurationSchema.safeParse({
-      provider: "google-ai-studio",
-      modelId: "gemini-2.5-flash",
-      transportRetries: 2,
-      routeBaseUrl: "https://generativelanguage.googleapis.com",
-    });
-
-    expect(result.success).toBe(false);
   });
 
   it("validates a non-secret health response", () => {
