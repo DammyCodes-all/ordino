@@ -13,23 +13,23 @@ export function CloudDisclosure() {
   if (!disclosureOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="cloud-disclosure-title"
-        className="w-full max-w-lg rounded-3xl border border-border bg-surface-raised p-8 shadow-2xl animate-fade-up"
+        className="w-full max-w-lg rounded-t-3xl border border-border bg-surface-raised p-5 shadow-2xl animate-fade-up sm:rounded-3xl sm:p-8"
       >
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-dim">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-dim sm:text-xs">
           Before you generate
         </p>
         <h2
           id="cloud-disclosure-title"
-          className="mt-3 text-2xl font-medium tracking-tight"
+          className="mt-2 text-xl font-medium tracking-tight sm:mt-3 sm:text-2xl"
         >
           Cloud processing with Google AI Studio
         </h2>
-        <div className="mt-5 space-y-4 text-base leading-relaxed text-muted">
+        <div className="mt-4 max-h-[50dvh] space-y-3 overflow-y-auto text-sm leading-relaxed text-muted sm:mt-5 sm:max-h-none sm:space-y-4 sm:text-base">
           <p>
             Prompts, relevant reference images, and rasterized PDF pages are
             sent to Google AI Studio for planning, writing, and visual review.
@@ -38,14 +38,14 @@ export function CloudDisclosure() {
             Document structure, local PDF rendering, and IndexedDB session
             recovery stay on this device. Generation and visual review require
             internet access and a server-side{" "}
-            <code className="rounded-md bg-background px-1.5 py-1 font-mono text-sm text-accent">
+            <code className="rounded-md bg-background px-1.5 py-1 font-mono text-xs text-accent sm:text-sm">
               GOOGLE_GENERATIVE_AI_API_KEY
             </code>{" "}
-            (never a <code className="font-mono text-sm">NEXT_PUBLIC_</code>{" "}
+            (never a <code className="font-mono text-xs sm:text-sm">NEXT_PUBLIC_</code>{" "}
             key).
           </p>
         </div>
-        <div className="mt-8 flex gap-3">
+        <div className="mt-6 flex flex-col-reverse gap-2 pb-[max(0.25rem,var(--safe-bottom))] sm:mt-8 sm:flex-row sm:gap-3 sm:pb-0">
           {cloudDisclosureAccepted ? (
             <button
               type="button"
