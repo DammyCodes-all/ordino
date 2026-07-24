@@ -7,8 +7,6 @@ type ParagraphData = Extract<DocumentNode, { type: "paragraph" }>;
 
 export function ParagraphNode({ node }: { node: ParagraphData }) {
   return (
-    <Text style={resolveParagraphStyle(node.style) as any}>
-      {node.text}
-    </Text>
+    <Text style={resolveParagraphStyle(node.style) as any}>{node.text}</Text>
   );
 }

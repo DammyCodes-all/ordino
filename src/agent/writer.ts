@@ -5,8 +5,9 @@ import type {
   AppResult,
 } from "@/contracts";
 import { newDocumentNodeSchema, nodePositionSchema, nodeIdSchema } from "@/contracts";
-import { GoogleAIClient, generateStructuredOutput } from "@/google-ai";
+import { GoogleAIClient, generateStructuredOutput, type ToolDefinition, type ToolCallResult } from "@/google-ai";
 import { ToolExecutor } from "./tool-executor";
+import { buildRevisionPrompt, type CombinedRevisionContext } from "@/review/revision-context";
 
 const MAX_WRITER_STEPS = 20;
 
@@ -68,6 +69,7 @@ function buildWriterPrompt(
   plan: DocumentPlan,
   history: string[],
   userMessage: string,
+  readResults?: Map<string, any>,
 ): string {
   const outlineLines = document.nodes.map((n, i) =>
     `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`
@@ -81,6 +83,12 @@ function buildWriterPrompt(
     ? `\n[Tool call history]\n${history.join("\n")}`
     : "";
 
+  const readBlock = readResults && readResults.size > 0
+    ? `\n[Read node content]\n${Array.from(readResults.entries())
+        .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
+        .join("\n")}`
+    : "";
+
   return `${userMessage}
 
 [Document plan]
@@ -89,6 +97,7 @@ ${planSections}
 
 [Current outline]
 ${outlineLines || "  (empty document)"}
+${readBlock}
 
 [Available actions]
 Output one action at a time as JSON matching the schema below.
@@ -133,6 +142,7 @@ export async function runWriterLoop(
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const history: string[] = [];
+  const readResults = new Map<string, any>();
   let steps = 0;
 
   while (steps < MAX_WRITER_STEPS) {
@@ -144,7 +154,7 @@ export async function runWriterLoop(
     }
     steps++;
 
-    const prompt = buildWriterPrompt(currentDoc, plan, history, userMessage);
+    const prompt = buildWriterPrompt(currentDoc, plan, history, userMessage, readResults);
 
     const res = await generateStructuredOutput(
       client,
@@ -176,6 +186,9 @@ export async function runWriterLoop(
     const r = executeAction(action, currentDoc, toolExecutor);
     if (r.result.success) {
       currentDoc = r.updatedDoc;
+      if (action.action === "readNode" && r.result.data?.node) {
+        readResults.set(action.nodeId, r.result.data.node);
+      }
     }
     history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
   }
@@ -255,3 +268,237 @@ Fix one issue at a time using the available actions. Output finalize when all is
 }
 
 export default runWriterLoop;
+
+function buildWriterTools(): ToolDefinition[] {
+  return [
+    {
+      name: "addNode",
+      description: "Add a new node at a position in the document",
+      parameters: {
+        type: "object",
+        properties: {
+          node: { type: "object", description: "The node to add (type, text, level, style, etc.)" },
+          position: { type: "object", description: "Position { anchor: 'before'|'after'|'first'|'last', referenceNodeId?: string }" },
+        },
+        required: ["node", "position"],
+      },
+    },
+    {
+      name: "editNode",
+      description: "Edit an existing node's content or style",
+      parameters: {
+        type: "object",
+        properties: {
+          nodeId: { type: "string", description: "The ID of the node to edit" },
+          nodeType: { type: "string", description: "The node type: heading, paragraph, list, table, quote, callout, divider" },
+          patch: { type: "object", description: "Fields to update (text, level, style, etc.)" },
+        },
+        required: ["nodeId", "nodeType"],
+      },
+    },
+    {
+      name: "moveNode",
+      description: "Reorder a node to a new position",
+      parameters: {
+        type: "object",
+        properties: {
+          nodeId: { type: "string", description: "The ID of the node to move" },
+          position: { type: "object", description: "Target position { anchor, referenceNodeId }" },
+        },
+        required: ["nodeId", "position"],
+      },
+    },
+    {
+      name: "deleteNode",
+      description: "Remove a node from the document",
+      parameters: {
+        type: "object",
+        properties: {
+          nodeId: { type: "string", description: "The ID of the node to delete" },
+        },
+        required: ["nodeId"],
+      },
+    },
+    {
+      name: "readNode",
+      description: "Read the full content of a node",
+      parameters: {
+        type: "object",
+        properties: {
+          nodeId: { type: "string", description: "The ID of the node to read" },
+        },
+        required: ["nodeId"],
+      },
+    },
+    {
+      name: "finalize",
+      description: "Signal that the document is complete",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  ];
+}
+
+function toolCallToAction(tc: ToolCallResult): WriterAction | null {
+  switch (tc.toolName) {
+    case "addNode":
+      return { action: "addNode", node: (tc.args as any).node, position: (tc.args as any).position } as WriterAction;
+    case "editNode":
+      return { action: "editNode", nodeId: (tc.args as any).nodeId, nodeType: (tc.args as any).nodeType, patch: (tc.args as any).patch } as WriterAction;
+    case "moveNode":
+      return { action: "moveNode", nodeId: (tc.args as any).nodeId, position: (tc.args as any).position } as WriterAction;
+    case "deleteNode":
+      return { action: "deleteNode", nodeId: (tc.args as any).nodeId } as WriterAction;
+    case "readNode":
+      return { action: "readNode", nodeId: (tc.args as any).nodeId } as WriterAction;
+    case "finalize":
+      return { action: "finalize" } as WriterAction;
+    default:
+      return null;
+  }
+}
+
+export async function runWriterLoopWithTools(
+  client: GoogleAIClient,
+  plan: DocumentPlan,
+  toolExecutor: ToolExecutor,
+  signal?: AbortSignal,
+): Promise<AppResult<{ document: DocumentState; message: string; history: string[] }>> {
+  const currentDoc = createDocumentFromPlan(plan);
+  const tools = buildWriterTools();
+  const history: string[] = [];
+  let steps = 0;
+
+  while (steps < MAX_WRITER_STEPS) {
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+      };
+    }
+    steps++;
+
+    const outline = currentDoc.nodes.map((n, i) => `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`).join("\n");
+    const prompt = `Create the document content based on the plan.
+
+[Document plan]
+${plan.summary}
+
+[Current outline]
+${outline || "  (empty document)"}
+
+Build the document section by section using the available tools.`;
+
+    const res = await client.generateWithTools({
+      prompt,
+      systemPrompt: "You are a document creation assistant. Use the available tools to build the document. When done, call finalize.",
+      tools,
+      toolChoice: "required",
+      signal,
+    });
+
+    if (!res.success) return res;
+
+    const toolCall = res.data.toolCalls?.[0];
+    if (!toolCall) {
+      history.push(`  Step ${steps}: no tool call — finalizing`);
+      return {
+        success: true,
+        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+      };
+    }
+
+    if (toolCall.toolName === "finalize") {
+      history.push(`  Step ${steps}: finalized`);
+      return {
+        success: true,
+        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+      };
+    }
+
+    const action = toolCallToAction(toolCall);
+    if (!action) {
+      history.push(`  Step ${steps}: unknown tool "${toolCall.toolName}" — finalizing`);
+      return {
+        success: true,
+        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+      };
+    }
+
+    const r = executeAction(action, currentDoc, toolExecutor);
+    if (r.result.success) {
+      currentDoc = r.updatedDoc;
+    }
+    history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
+  }
+
+  return {
+    success: true,
+    data: { document: currentDoc, message: `Document written (reached max ${MAX_WRITER_STEPS} steps).`, history },
+  };
+}
+
+export async function runRevisionLoopWithTools(
+  client: GoogleAIClient,
+  document: DocumentState,
+  validationIssues: any[],
+  visualIssues: any[],
+  toolExecutor: ToolExecutor,
+  signal?: AbortSignal,
+): Promise<AppResult<{ document: DocumentState }>> {
+  let currentDoc = document;
+  let steps = 0;
+  const tools = buildWriterTools();
+
+  while (steps < MAX_WRITER_STEPS) {
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+      };
+    }
+    steps++;
+
+    const outline = currentDoc.nodes.map((n, i) => ({ id: n.id, index: i, type: n.type }));
+    const prompt = `You are revising a document based on review feedback.
+
+Current outline: ${JSON.stringify(outline)}
+
+Validation issues: ${JSON.stringify(validationIssues)}
+Visual review issues: ${JSON.stringify(visualIssues)}
+
+Fix one issue at a time using the available tools. Call finalize when all issues are resolved.`;
+
+    const res = await client.generateWithTools({
+      prompt,
+      systemPrompt: "You are a document revision assistant. Use the available tools to fix issues. Call finalize when done.",
+      tools,
+      toolChoice: "required",
+      signal,
+    });
+
+    if (!res.success) return res;
+
+    const toolCall = res.data.toolCalls?.[0];
+    if (!toolCall || toolCall.toolName === "finalize") {
+      return { success: true, data: { document: currentDoc } };
+    }
+
+    const action = toolCallToAction(toolCall);
+    if (!action) {
+      return { success: true, data: { document: currentDoc } };
+    }
+
+    const r = executeAction(action, currentDoc, toolExecutor);
+    if (r.result.success) {
+      currentDoc = r.updatedDoc;
+    }
+  }
+
+  return {
+    success: true,
+    data: { document: currentDoc },
+  };
+}
