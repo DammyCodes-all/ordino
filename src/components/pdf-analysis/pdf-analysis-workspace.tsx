@@ -19,6 +19,7 @@ export function PdfAnalysisWorkspace() {
     analysis,
     setUserGoal,
     userGoal,
+    reanalyze,
   } = usePdfAnalysis();
 
   if (!open) return null;
@@ -32,6 +33,14 @@ export function PdfAnalysisWorkspace() {
             <p className="text-sm text-muted">PDF analysis</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={!analysis || stage === "ingesting" || stage === "analyzing"}
+              onClick={() => void reanalyze()}
+              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm disabled:opacity-40"
+            >
+              Re-analyze
+            </button>
             <button
               type="button"
               disabled={!analysis || stage !== "ready"}

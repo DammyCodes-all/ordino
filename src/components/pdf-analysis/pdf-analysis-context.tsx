@@ -62,7 +62,9 @@ type PdfAnalysisContextValue = {
   exportAnnotated: () => Promise<void>;
   playNarration: (highlightId?: string | null) => void;
   pauseNarration: () => void;
+  resumeNarration: () => void;
   stopNarration: () => void;
+  reanalyze: () => Promise<void>;
   closeWorkspace: () => void;
 };
 
@@ -216,9 +218,50 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
     playerRef.current?.pause();
   }, []);
 
+  const resumeNarration = useCallback(() => {
+    playerRef.current?.resume();
+  }, []);
+
   const stopNarration = useCallback(() => {
     playerRef.current?.stop();
   }, []);
+
+  const reanalyze = useCallback(async () => {
+    if (!analysis || stage === "ingesting" || stage === "analyzing") return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    playerRef.current?.stop();
+    setStage("analyzing");
+    setStatusMessage("Re-analyzing with updated language/goal…");
+    setErrorMessage(null);
+
+    const analyzed = await analyzeAnalysisDocument(
+      analysis,
+      targetLanguage,
+      userGoal.trim() || null,
+      controller.signal,
+    );
+
+    if (!analyzed.success) {
+      setStage("failed");
+      setErrorMessage(analyzed.error.message);
+      setStatusMessage("Re-analysis failed.");
+      return;
+    }
+
+    setHighlights(analyzed.data.highlights);
+    setSummary(analyzed.data.summary);
+    setNarration(analyzed.data.narration);
+    setSelectedHighlightId(analyzed.data.highlights[0]?.id ?? null);
+    setCurrentPage(analyzed.data.highlights[0]?.pageNumber ?? 1);
+    setStage("ready");
+    setStatusMessage(
+      analyzed.data.highlights.length > 0
+        ? `Found ${analyzed.data.highlights.length} highlight(s).`
+        : "Analysis complete — no highlights found.",
+    );
+  }, [analysis, stage, targetLanguage, userGoal]);
 
   const closeWorkspace = useCallback(() => {
     abortRef.current?.abort();
@@ -253,7 +296,9 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
       exportAnnotated,
       playNarration,
       pauseNarration,
+      resumeNarration,
       stopNarration,
+      reanalyze,
       closeWorkspace,
     }),
     [
@@ -275,7 +320,9 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
       exportAnnotated,
       playNarration,
       pauseNarration,
+      resumeNarration,
       stopNarration,
+      reanalyze,
       closeWorkspace,
     ],
   );
