@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const brandedUuid = <T extends string>(brand: T) =>
+const brandedUuid = <T extends string>(_brand: T) =>
   z.string().uuid().brand<T>();
 
 export const documentIdSchema = brandedUuid("DocumentId");

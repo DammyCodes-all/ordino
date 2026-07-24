@@ -10,9 +10,7 @@ export const googleAIConfigurationSchema = z
   })
   .strict();
 
-export type GoogleAIConfiguration = z.infer<
-  typeof googleAIConfigurationSchema
->;
+export type GoogleAIConfiguration = z.infer<typeof googleAIConfigurationSchema>;
 
 export interface ModelDiagnosticPort {
   checkConfigured(signal?: AbortSignal): Promise<AppResult<void>>;

@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { checkpointIdSchema, documentIdSchema, nodeIdSchema } from "./ids";
 
+export const documentNodeTypeSchema = z.enum([
+  "heading",
+  "paragraph",
+  "list",
+  "table",
+  "quote",
+  "callout",
+  "divider",
+  "page_break",
+]);
+
 export const writingStyleSchema = z.enum([
   "professional",
   "academic",
@@ -111,9 +122,7 @@ const tableNodeSchema = z
     id: nodeIdSchema,
     type: z.literal("table"),
     columns: z.array(tableColumnSchema).min(1).max(6),
-    rows: z
-      .array(z.array(z.string().trim().min(1).max(2_000)))
-      .max(20),
+    rows: z.array(z.array(z.string().trim().min(1).max(2_000))).max(20),
     style: tableStyleSchema,
   })
   .strict()

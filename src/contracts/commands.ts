@@ -1,8 +1,11 @@
 import { z } from "zod";
 import {
   calloutStyleSchema,
+  type DocumentCheckpoint,
+  type DocumentState,
   dividerStyleSchema,
   documentCheckpointSchema,
+  documentNodeSchema,
   documentStateSchema,
   headingStyleSchema,
   listStyleSchema,
@@ -10,8 +13,6 @@ import {
   quoteStyleSchema,
   tableColumnSchema,
   tableStyleSchema,
-  type DocumentCheckpoint,
-  type DocumentState,
 } from "./document";
 import { nodeIdSchema } from "./ids";
 import { documentOutlineSchema } from "./outline";
@@ -53,9 +54,7 @@ const newTableNodeSchema = z
   .object({
     type: z.literal("table"),
     columns: z.array(tableColumnSchema).min(1).max(6),
-    rows: z
-      .array(z.array(z.string().trim().min(1).max(2_000)))
-      .max(20),
+    rows: z.array(z.array(z.string().trim().min(1).max(2_000))).max(20),
     style: tableStyleSchema.partial().optional(),
   })
   .strict()
@@ -296,19 +295,11 @@ export const addNodeReceiptSchema = mutationReceiptSchema
 export const readNodeReceiptSchema = z
   .object({
     documentVersion: z.number().int().nonnegative(),
-    node: z.lazy(() =>
-      import("./document").then
-        ? // The runtime schema is supplied below without an async import.
-          z.never()
-        : z.never(),
-    ),
+    node: documentNodeSchema,
   })
   .strict();
 
-export interface ReadNodeReceipt {
-  documentVersion: number;
-  node: import("./document").DocumentNode;
-}
+export type ReadNodeReceipt = z.infer<typeof readNodeReceiptSchema>;
 
 export const finalizeReceiptSchema = z
   .object({
@@ -351,7 +342,10 @@ export interface DocumentPort {
     command: DocumentCommand,
   ): AppResult<CommandExecution>;
   outline(document: DocumentState): import("./outline").DocumentOutline;
-  readNode(document: DocumentState, nodeId: import("./ids").NodeId): AppResult<ReadNodeReceipt>;
+  readNode(
+    document: DocumentState,
+    nodeId: import("./ids").NodeId,
+  ): AppResult<ReadNodeReceipt>;
   createCheckpoint(
     document: DocumentState,
     reason: "user_turn" | "review_revision",

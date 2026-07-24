@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { documentCheckpointSchema, documentStateSchema } from "./document";
-import {
-  messageIdSchema,
-  referenceImageIdSchema,
-} from "./ids";
+import { messageIdSchema, referenceImageIdSchema } from "./ids";
 import type { AppResult } from "./result";
 
 export const referenceImageSchema = z

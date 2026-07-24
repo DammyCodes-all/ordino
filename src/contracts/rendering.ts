@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { documentIdSchema } from "./ids";
 import type { DocumentState } from "./document";
+import { documentIdSchema } from "./ids";
 import type { AppResult } from "./result";
 
 export const internalRenderResultSchema = z
