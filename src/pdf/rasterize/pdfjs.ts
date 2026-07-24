@@ -1,4 +1,5 @@
 const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
+
 import type {
   InternalRenderResult,
   RasterizedPage,
@@ -72,7 +73,6 @@ export async function rasterizePdf(
       );
       const ctx = canvas.getContext("2d");
 
-      // @ts-ignore - pdfjs types for render in Node
       await page.render({ canvasContext: ctx as any, viewport }).promise;
 
       const pngBuffer = canvas.toBuffer("image/png");

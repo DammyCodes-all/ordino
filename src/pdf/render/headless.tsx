@@ -1,8 +1,8 @@
 import { pdf } from "@react-pdf/renderer";
-import DocumentRenderer from "../components/DocumentRenderer";
-import { registerDefaultFonts } from "../fonts";
 import type { DocumentState } from "../../contracts/document";
 import type { InternalRenderResult } from "../../contracts/rendering";
+import DocumentRenderer from "../components/DocumentRenderer";
+import { registerDefaultFonts } from "../fonts";
 
 export async function renderDocumentToPdf(
   document: DocumentState,
@@ -25,12 +25,12 @@ export async function renderDocumentToPdf(
       arrayBuffer = buf.buffer.slice(
         buf.byteOffset,
         buf.byteOffset + buf.byteLength,
-      );
+      ) as ArrayBuffer;
     } else if (buf instanceof Uint8Array) {
       arrayBuffer = buf.buffer.slice(
         buf.byteOffset,
         buf.byteOffset + buf.byteLength,
-      );
+      ) as ArrayBuffer;
     } else {
       const tmp = Uint8Array.from(buf as any);
       arrayBuffer = tmp.buffer.slice(

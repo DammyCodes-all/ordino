@@ -1,16 +1,16 @@
 import { THEME } from "./professional-theme";
 
 export {
-  THEME,
-  spacingMap,
   emphasisStyle,
-  resolveHeadingStyle,
-  resolveParagraphStyle,
-  resolveListNodeStyle,
-  resolveTableStyle,
-  resolveQuoteStyle,
   resolveCalloutStyle,
   resolveDividerStyle,
+  resolveHeadingStyle,
+  resolveListNodeStyle,
+  resolveParagraphStyle,
+  resolveQuoteStyle,
+  resolveTableStyle,
+  spacingMap,
+  THEME,
 } from "./professional-theme";
 
 export const PAGE_SIZE = THEME.PAGE_SIZE;
