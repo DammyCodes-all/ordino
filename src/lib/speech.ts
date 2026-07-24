@@ -169,19 +169,32 @@ export function listenOnce(options?: {
 }
 
 let activeAudio: HTMLAudioElement | null = null;
+let unlockPlay: Promise<void> | null = null;
 
 /** Call synchronously from a click so later Audio.play() is allowed. */
 export function unlockMediaPlayback() {
   if (typeof window === "undefined") return;
   unlockSpeech();
-  if (!activeAudio) activeAudio = new Audio();
-  // Tiny silent WAV to unlock autoplay for this element.
+  if (!activeAudio) {
+    activeAudio = new Audio();
+    activeAudio.preload = "auto";
+  }
+  // Valid tiny silent PCM WAV (keeps the element in a playable unlocked state).
   activeAudio.src =
-    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-  void activeAudio.play().then(() => {
-    activeAudio?.pause();
-    if (activeAudio) activeAudio.currentTime = 0;
-  }).catch(() => undefined);
+    "data:audio/wav;base64,UklGRnoAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAACAgICAgICAgICAgICAgA==";
+  unlockPlay = activeAudio.play().then(() => undefined).catch(() => undefined);
+}
+
+export function pauseMediaPlayback() {
+  activeAudio?.pause();
+  if (speechSynthesisSupported()) window.speechSynthesis.pause();
+}
+
+export function resumeMediaPlayback() {
+  if (activeAudio && activeAudio.paused && activeAudio.src) {
+    void activeAudio.play().catch(() => undefined);
+  }
+  if (speechSynthesisSupported()) window.speechSynthesis.resume();
 }
 
 export async function speakText(
@@ -195,7 +208,7 @@ export async function speakText(
     throw new DOMException("Aborted", "AbortError");
   }
 
-  // Prefer server WAV playback — Chromium speechSynthesis is unreliable here.
+  // Server WAV first — Chromium speechSynthesis returns synthesis-failed here.
   try {
     await speakWithServer(trimmed, options);
     return;
@@ -205,6 +218,8 @@ export async function speakText(
 
   if (speechSynthesisSupported()) {
     await speakWithBrowser(trimmed, options);
+  } else {
+    throw new Error("No speech playback method available.");
   }
 }
 
@@ -214,6 +229,12 @@ async function speakWithServer(
 ): Promise<void> {
   if (options?.signal?.aborted) {
     throw new DOMException("Aborted", "AbortError");
+  }
+
+  // Finish any unlock play so we can swap the source cleanly.
+  if (unlockPlay) {
+    await unlockPlay.catch(() => undefined);
+    unlockPlay = null;
   }
 
   const response = await fetch("/api/tts/speak", {
@@ -235,7 +256,7 @@ async function speakWithServer(
   await new Promise<void>((resolve, reject) => {
     const audio = activeAudio ?? new Audio();
     activeAudio = audio;
-    audio.src = url;
+    audio.pause();
 
     const cleanup = () => {
       URL.revokeObjectURL(url);
@@ -258,10 +279,16 @@ async function speakWithServer(
       reject(new Error("Audio playback failed."));
     };
 
-    void audio.play().catch((error) => {
-      cleanup();
-      reject(error instanceof Error ? error : new Error(String(error)));
-    });
+    const start = () => {
+      void audio.play().catch((error) => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      });
+    };
+
+    audio.onloadeddata = () => start();
+    audio.src = url;
+    audio.load();
   });
 }
 
@@ -368,8 +395,6 @@ export async function speakLongText(
   text: string,
   options?: { lang?: string; signal?: AbortSignal },
 ) {
-  // Ensure voices are ready once up front.
-  await waitForVoices();
   const chunks = chunkForSpeech(text);
   for (const chunk of chunks) {
     if (options?.signal?.aborted) {
