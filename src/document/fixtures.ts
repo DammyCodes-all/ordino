@@ -21,13 +21,23 @@ export const professionalDocumentFixture = {
       type: "heading",
       level: 1,
       text: "Executive Summary",
-      style: { spaceBefore: "md", spaceAfter: "sm", alignment: "left", keepWithNext: true },
+      style: {
+        spaceBefore: "md",
+        spaceAfter: "sm",
+        alignment: "left",
+        keepWithNext: true,
+      },
     },
     {
       id: newId(),
       type: "paragraph",
       text: "This is a sample paragraph used in the professional fixture.",
-      style: { spaceBefore: "none", spaceAfter: "md", alignment: "justify", emphasis: "normal" },
+      style: {
+        spaceBefore: "none",
+        spaceAfter: "md",
+        alignment: "justify",
+        emphasis: "normal",
+      },
     },
     {
       id: newId(),
@@ -43,8 +53,17 @@ export const professionalDocumentFixture = {
         { header: "Name", widthPercent: null },
         { header: "Value", widthPercent: null },
       ],
-      rows: [["Alpha", "1"], ["Beta", "2"]],
-      style: { spaceBefore: "sm", spaceAfter: "sm", density: "comfortable", headerAlignment: "left", striped: false },
+      rows: [
+        ["Alpha", "1"],
+        ["Beta", "2"],
+      ],
+      style: {
+        spaceBefore: "sm",
+        spaceAfter: "sm",
+        density: "comfortable",
+        headerAlignment: "left",
+        striped: false,
+      },
     },
     {
       id: newId(),

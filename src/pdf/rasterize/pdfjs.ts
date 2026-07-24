@@ -1,13 +1,16 @@
-// @ts-expect-error pdfjs legacy build ships without TypeScript declarations
-import pdfjs from "pdfjs-dist/legacy/build/pdf.js";
 import type {
   InternalRenderResult,
   RasterizedPage,
 } from "../../contracts/rendering";
 
-declare const require: any;
+declare const require: (id: string) => any;
 
-pdfjs.GlobalWorkerOptions.workerSrc = ""; // Not needed in Node (use legacy build)
+// pdfjs legacy build has no TS declarations in this environment
+const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
+
+if (pdfjs?.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = "";
+}
 
 export async function rasterizePdf(
   render: InternalRenderResult,
@@ -23,6 +26,7 @@ export async function rasterizePdf(
     const pdf = await loadingTask.promise;
 
     const pages: RasterizedPage[] = [];
+    const pageTexts: string[] = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
       if (signal?.aborted)
@@ -36,13 +40,24 @@ export async function rasterizePdf(
         };
 
       const page = await pdf.getPage(i);
-      const scale = 2; // default render scale for decent resolution
+
+      try {
+        const textContent = await page.getTextContent();
+        const text = textContent.items
+          .map((item: { str?: string }) => item.str ?? "")
+          .join(" ");
+        pageTexts.push(text);
+      } catch {
+        pageTexts.push("");
+      }
+
+      const scale = 2;
       const viewport = page.getViewport({ scale });
 
       let createCanvas: any;
       try {
         createCanvas = require("canvas").createCanvas;
-      } catch (e) {
+      } catch {
         return {
           success: false,
           error: {
@@ -59,7 +74,6 @@ export async function rasterizePdf(
       );
       const ctx = canvas.getContext("2d");
 
-      // @ts-ignore - pdfjs types for render in Node
       await page.render({ canvasContext: ctx as any, viewport }).promise;
 
       const pngBuffer = canvas.toBuffer("image/png");
@@ -75,13 +89,15 @@ export async function rasterizePdf(
       });
     }
 
+    render.pageTexts = pageTexts;
+
     return { success: true, data: pages };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
       error: {
         code: "RASTERIZATION_FAILED",
-        message: String(err),
+        message: err instanceof Error ? err.message : String(err),
         retryable: false,
       },
     };

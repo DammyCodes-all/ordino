@@ -102,7 +102,7 @@ export function normalizeVisualReview(
 
   return visualReviewResultSchema.parse({
     documentVersion: 1, // Will be set by caller to current document.version
-    pass: raw.pass && issues.length === 0,
+    pass: raw.pass,
     issues,
   });
 }

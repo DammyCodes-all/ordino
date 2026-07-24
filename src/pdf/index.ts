@@ -1,22 +1,24 @@
-import { AppResult } from "../contracts/result";
-import { DocumentState } from "../contracts/document";
-import {
-  InternalRenderResult,
-  RasterizedPage,
+import type { DocumentState } from "../contracts/document";
+import type {
   ExportResult,
+  InternalRenderResult,
   PdfPort,
+  RasterizedPage,
 } from "../contracts/rendering";
-import { ValidationReport } from "../contracts/validation";
-import { renderDocumentToPdf } from "./render/headless";
-import { rasterizePdf } from "./rasterize/pdfjs";
+import type { AppResult } from "../contracts/result";
 import { exportDocument } from "./exporter";
+import { rasterizePdf } from "./rasterize/pdfjs";
+import { renderDocumentToPdf } from "./render/headless";
+
+export { validatePdf } from "./validate-pdf";
 
 export function createPdfPort(): PdfPort {
   return {
     async render(
       document: DocumentState,
+      signal?: AbortSignal,
     ): Promise<AppResult<InternalRenderResult>> {
-      const res = await renderDocumentToPdf(document);
+      const res = await renderDocumentToPdf(document, signal);
       if (!res.success) return { success: false, error: res.error } as any;
       return { success: true, data: res.data };
     },
@@ -40,17 +42,6 @@ export function createPdfPort(): PdfPort {
       return { success: true, data: res.data };
     },
   };
-}
-
-export function validatePdf(
-  document: DocumentState,
-  _render?: InternalRenderResult,
-): Promise<ValidationReport> {
-  return Promise.resolve({
-    documentVersion: document.version,
-    pass: true,
-    issues: [],
-  });
 }
 
 export default createPdfPort;

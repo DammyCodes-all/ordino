@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    const { prompt, systemPrompt, modelId, images } = parsed.data;
+    const { prompt, systemPrompt, modelId, images, tools, toolChoice } = parsed.data;
     const modelToUse = modelId?.trim() || process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() || DEFAULT_MODEL_ID;
 
     let content: string | Array<{ type: "text"; text: string } | { type: "image"; image: string }> = prompt;
@@ -41,6 +41,13 @@ export async function POST(request: Request): Promise<Response> {
       ];
     }
 
+    const toolsRecord =
+      tools && tools.length > 0
+        ? Object.fromEntries(
+            tools.map((t) => [t.name, { description: t.description, inputSchema: t.parameters }]),
+          )
+        : undefined;
+
     const result = await generateText({
       model: google(modelToUse),
       system: systemPrompt,
@@ -50,11 +57,15 @@ export async function POST(request: Request): Promise<Response> {
           content: content as any,
         },
       ],
+      ...(toolsRecord ? { tools: toolsRecord as any, toolChoice: toolChoice ?? "auto" } : {}),
       maxRetries: 2,
       abortSignal: request.signal,
     });
 
-    return Response.json({ text: result.text });
+    return Response.json({
+      text: result.text,
+      toolCalls: (result as any).toolCalls?.map((tc: any) => ({ toolName: tc.toolName, args: tc.args })),
+    });
   } catch (error: any) {
     const message = error?.message || String(error);
     if (message.includes("401") || message.includes("403") || message.includes("API key")) {

@@ -1,184 +1,21 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { DocumentNode, DocumentState } from "../../contracts/document";
-import theme from "../theme";
+import { THEME } from "../professional-theme";
+import { CalloutNode } from "./callout-node";
+import { DividerNode } from "./divider-node";
+import { HeadingNode } from "./heading-node";
+import { ListNode } from "./list-node";
+import { PageBreakNode } from "./page-break-node";
+import { ParagraphNode } from "./paragraph-node";
+import { QuoteNode } from "./quote-node";
+import { TableNode } from "./table-node";
 
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: theme.DEFAULT_MARGIN + 14,
-    paddingBottom: theme.DEFAULT_MARGIN + 14,
-    paddingHorizontal: theme.DEFAULT_MARGIN + 14,
-    fontFamily: theme.DEFAULT_FONT_FAMILY,
-    fontSize: theme.DEFAULT_FONT_SIZE,
-    lineHeight: 1.45,
-    color: "#1a1a1a",
-  },
-  eyebrow: {
-    fontSize: 9,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: "#737373",
-    marginBottom: 10,
-  },
-  h1: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 14,
-    lineHeight: 1.25,
-  },
-  h2: {
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  h3: {
-    fontSize: 12,
-    fontFamily: "Helvetica-Bold",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  paragraph: {
-    marginBottom: 10,
-    color: "#2a2a2a",
-  },
-  listItem: {
-    marginBottom: 4,
-    paddingLeft: 8,
-  },
-  quote: {
-    marginVertical: 12,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: "#c4c4c4",
-    color: "#404040",
-    fontStyle: "italic",
-  },
-  callout: {
-    marginVertical: 12,
-    padding: 12,
-    backgroundColor: "#f4f4f5",
-  },
-  calloutTitle: {
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 4,
-    fontSize: 10,
-  },
-  table: {
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: "#d4d4d8",
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e4e4e7",
-  },
-  tableHeader: {
-    backgroundColor: "#f4f4f5",
-  },
-  tableCell: {
-    flex: 1,
-    padding: 8,
-    fontSize: 10,
-  },
-  divider: {
-    marginVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#d4d4d8",
-  },
-  footer: {
-    position: "absolute",
-    bottom: 28,
-    left: theme.DEFAULT_MARGIN + 14,
-    right: theme.DEFAULT_MARGIN + 14,
-    fontSize: 9,
-    color: "#a1a1aa",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-});
-
-function NodeBlock({ node }: { node: DocumentNode }) {
-  switch (node.type) {
-    case "heading":
-      return (
-        <Text
-          style={
-            node.level === 1
-              ? styles.h1
-              : node.level === 2
-                ? styles.h2
-                : styles.h3
-          }
-        >
-          {node.text}
-        </Text>
-      );
-    case "paragraph":
-      return <Text style={styles.paragraph}>{node.text}</Text>;
-    case "list":
-      return (
-        <View style={{ marginBottom: 10 }}>
-          {node.items.map((item, index) => (
-            <Text key={`${node.id}-${index}`} style={styles.listItem}>
-              {node.ordered ? `${index + 1}. ` : "• "}
-              {item}
-            </Text>
-          ))}
-        </View>
-      );
-    case "quote":
-      return (
-        <View style={styles.quote}>
-          <Text>{node.text}</Text>
-          {node.attribution ? (
-            <Text style={{ marginTop: 6, fontSize: 9 }}>
-              — {node.attribution}
-            </Text>
-          ) : null}
-        </View>
-      );
-    case "callout":
-      return (
-        <View style={styles.callout}>
-          {node.title ? (
-            <Text style={styles.calloutTitle}>{node.title}</Text>
-          ) : null}
-          <Text>{node.text}</Text>
-        </View>
-      );
-    case "table":
-      return (
-        <View style={styles.table}>
-          <View style={[styles.tableRow, styles.tableHeader]}>
-            {node.columns.map((column) => (
-              <Text key={column.header} style={styles.tableCell}>
-                {column.header}
-              </Text>
-            ))}
-          </View>
-          {node.rows.map((row, rowIndex) => (
-            <View key={`${node.id}-row-${rowIndex}`} style={styles.tableRow}>
-              {row.map((cell, cellIndex) => (
-                <Text
-                  key={`${node.id}-${rowIndex}-${cellIndex}`}
-                  style={styles.tableCell}
-                >
-                  {cell}
-                </Text>
-              ))}
-            </View>
-          ))}
-        </View>
-      );
-    case "divider":
-      return <View style={styles.divider} />;
-    case "page_break":
-      return null;
-    default:
-      return null;
-  }
-}
+const PAGE_STYLE = {
+  paddingTop: THEME.MARGIN.top,
+  paddingBottom: THEME.MARGIN.bottom,
+  paddingLeft: THEME.MARGIN.left,
+  paddingRight: THEME.MARGIN.right,
+};
 
 export function chunkByPageBreaks(nodes: DocumentNode[]): DocumentNode[][] {
   const pages: DocumentNode[][] = [[]];
@@ -189,12 +26,62 @@ export function chunkByPageBreaks(nodes: DocumentNode[]): DocumentNode[][] {
     }
     pages[pages.length - 1]?.push(node);
   }
-  return pages.filter((page) => page.length > 0);
+  const filtered = pages.filter((page) => page.length > 0);
+  return filtered.length > 0 ? filtered : [[]];
+}
+
+function renderNode(node: DocumentNode) {
+  switch (node.type) {
+    case "heading":
+      return <HeadingNode key={node.id} node={node} />;
+    case "paragraph":
+      return <ParagraphNode key={node.id} node={node} />;
+    case "list":
+      return <ListNode key={node.id} node={node} />;
+    case "table":
+      return <TableNode key={node.id} node={node} />;
+    case "quote":
+      return <QuoteNode key={node.id} node={node} />;
+    case "callout":
+      return <CalloutNode key={node.id} node={node} />;
+    case "divider":
+      return <DividerNode key={node.id} node={node} />;
+    case "page_break":
+      return <PageBreakNode key={node.id} />;
+    default:
+      return null;
+  }
+}
+
+function PageFooter({
+  pageNumber,
+  title,
+}: {
+  pageNumber: number;
+  title: string;
+}) {
+  return (
+    <View
+      fixed
+      style={{
+        position: "absolute",
+        bottom: 20,
+        left: THEME.MARGIN.left,
+        right: THEME.MARGIN.right,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <Text style={THEME.FOOTER_STYLE}>{title}</Text>
+      <Text style={THEME.PAGE_NUMBER_STYLE}>{pageNumber}</Text>
+    </View>
+  );
 }
 
 export function DocumentRenderer({ document }: { document: DocumentState }) {
   const pages = chunkByPageBreaks(document.nodes);
-  const pageNodes = pages.length > 0 ? pages : [[]];
+  const title = document.meta.title || "Untitled";
 
   return (
     <Document
@@ -202,26 +89,28 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
       author="Ordino"
       subject={document.meta.documentType}
     >
-      {pageNodes.map((nodes, pageIndex) => (
+      {pages.map((nodes, pageIndex) => (
         <Page
           key={`page-${pageIndex}-${nodes[0]?.id ?? "empty"}`}
-          size={theme.PAGE_SIZE}
-          style={styles.page}
+          size={THEME.PAGE_SIZE}
+          style={PAGE_STYLE}
+          wrap
         >
           {pageIndex === 0 ? (
-            <Text style={styles.eyebrow}>{document.meta.documentType}</Text>
-          ) : null}
-          {nodes.map((node) => (
-            <NodeBlock key={node.id} node={node} />
-          ))}
-          <View style={styles.footer} fixed>
-            <Text>{document.meta.title}</Text>
             <Text
-              render={({ pageNumber, totalPages }) =>
-                `${pageNumber} / ${totalPages}`
-              }
-            />
-          </View>
+              style={{
+                fontSize: THEME.FONT_SIZES.title,
+                fontWeight: 700,
+                color: THEME.COLORS.text,
+                marginBottom: 20,
+                lineHeight: THEME.LINE_HEIGHT.tight,
+              }}
+            >
+              {title}
+            </Text>
+          ) : null}
+          {nodes.map((node) => renderNode(node))}
+          <PageFooter pageNumber={pageIndex + 1} title={title} />
         </Page>
       ))}
     </Document>
