@@ -29,7 +29,7 @@ export function ChatOutline() {
 
   return (
     <div className="mx-auto mb-3 w-full max-w-2xl animate-fade-up">
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-surface/50 backdrop-blur-[2px]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button
             type="button"

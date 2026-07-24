@@ -9,7 +9,7 @@ import { PreviewSidebar } from "@/components/pdf-preview/preview-sidebar";
 
 function ShellLayout() {
   return (
-    <div className="relative flex h-dvh overflow-hidden bg-background">
+    <div className="relative flex h-dvh overflow-hidden bg-transparent">
       <LeftRail />
       <div className="relative flex min-w-0 flex-1 flex-row overflow-hidden">
         <ChatPanel />

@@ -2,26 +2,26 @@
 
 :root,
 html[data-theme="light"] {
-  --background: #e6ccb2;
+  --background: #efe6dc;
   --foreground: #3d2918;
-  --surface: #ede0d4;
-  --surface-raised: #f4ebe3;
-  --surface-hover: #dfc4a8;
+  --surface: #f3ebe3;
+  --surface-raised: #f7f1ea;
+  --surface-hover: #e6d5c4;
   --border: #c4a882;
-  --border-subtle: #d4b896;
+  --border-subtle: #d9c4ae;
   --muted: #7f5539;
   --muted-dim: #9a7358;
   --accent: #7f5539;
   --accent-dim: #a67c5a;
   --accent-soft: rgba(127, 85, 57, 0.14);
-  --primary: #ede0d4;
+  --primary: #efe6dc;
   --primary-foreground: #7f5539;
   --brand: #7f5539;
   --danger: #b42318;
   --warning: #b54708;
   --success: #3b7c3a;
-  --composer: #ede0d4;
-  --preview-chrome: #dfc4a8;
+  --composer: #f3ebe3;
+  --preview-chrome: #e6d5c4;
   --preview-frame: #c4a882;
   --rail-width: 5rem;
   --panel-width: 22rem;
@@ -29,27 +29,27 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
-  --background: #2a1a12;
+  --background: #9c6644;
   --foreground: #ede0d4;
-  --surface: #7f5539;
-  --surface-raised: #6e4931;
-  --surface-hover: #8f6445;
-  --border: #a67c5a;
-  --border-subtle: #5c3d29;
+  --surface: #8a5939;
+  --surface-raised: #7a4e32;
+  --surface-hover: #b07a55;
+  --border: #c4a882;
+  --border-subtle: #7a4e32;
   --muted: #e6ccb2;
-  --muted-dim: #c4a882;
-  --accent: #e6ccb2;
-  --accent-dim: #ede0d4;
-  --accent-soft: rgba(230, 204, 178, 0.16);
+  --muted-dim: #d4b896;
+  --accent: #ede0d4;
+  --accent-dim: #f4ebe3;
+  --accent-soft: rgba(237, 224, 212, 0.18);
   --primary: #ede0d4;
-  --primary-foreground: #7f5539;
-  --brand: #e6ccb2;
+  --primary-foreground: #9c6644;
+  --brand: #ede0d4;
   --danger: #f97066;
   --warning: #fdb022;
   --success: #6ce9a6;
-  --composer: #3d2918;
-  --preview-chrome: #1f140f;
-  --preview-frame: #5c3d29;
+  --composer: #8a5939;
+  --preview-chrome: #7a4e32;
+  --preview-frame: #6a432c;
   --rail-width: 5rem;
   --panel-width: 22rem;
   color-scheme: dark;
@@ -94,11 +94,55 @@ html[data-theme="dark"] {
   box-sizing: border-box;
 }
 
+/*
+ * Paper grain from the portfolio sample:
+ * soft fiber noise on the field, heavier stipple punched through ink.
+ */
+:root {
+  /* Soft, fine paper fiber — low contrast, organic clumping */
+  --paper-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.22 0 0 0 0 0.2 0 0 0 0 0.18 0 0 0 0.42 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* High-contrast stipple for printed/stamped ink (wordmarks) */
+  --ink-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='i'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.42 0 0 0 0.85 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23i)'/%3E%3C/svg%3E");
+  --paper-grain-size: 200px 200px;
+}
+
+html {
+  background-color: var(--background);
+}
+
 body {
-  background: var(--background);
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+  background-image: var(--paper-grain);
+  background-size: var(--paper-grain-size);
+  background-repeat: repeat;
+  background-blend-mode: multiply;
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   margin: 0;
+}
+
+/* Film grain overlay — same paper tooth across the whole UI */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.32;
+  background-image: var(--paper-grain);
+  background-size: 240px 240px;
+  mix-blend-mode: soft-light;
+}
+
+html[data-theme="dark"] body {
+  background-blend-mode: soft-light;
+}
+
+html[data-theme="dark"] body::before {
+  opacity: 0.2;
+  mix-blend-mode: overlay;
 }
 
 ::selection {
@@ -119,8 +163,9 @@ textarea {
   text-transform: lowercase;
 }
 
-/* Grainy brown wordmark (blue → brown) */
-.brand-wordmark {
+/* Heavy ink stipple through brand type — same printed feel as the sample */
+.brand-wordmark,
+.brand-wordmark-solid {
   font-family: var(--font-comfortaa), ui-rounded, sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -128,21 +173,17 @@ textarea {
   text-transform: lowercase;
   color: transparent;
   background-color: var(--brand);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0 0.06 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
-  background-blend-mode: multiply;
+  background-image: var(--ink-grain);
+  background-size: 120px 120px;
+  background-blend-mode: soft-light;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.brand-wordmark-solid {
-  font-family: var(--font-comfortaa), ui-rounded, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  text-transform: lowercase;
-  color: var(--brand);
+html[data-theme="dark"] .brand-wordmark,
+html[data-theme="dark"] .brand-wordmark-solid {
+  background-blend-mode: overlay;
 }
 
 @keyframes fade-up {

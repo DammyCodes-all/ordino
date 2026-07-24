@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   composeAgent,
+  createSessionDocumentPort,
   createSessionPdfPort,
 } from "@/app/integration/compose-agent";
 import { downloadFileName } from "@/components/pdf-preview/fake-pdf-document";
@@ -32,11 +33,8 @@ import type {
   WorkflowStage,
 } from "@/contracts";
 import { googleAIHealthResponseSchema } from "@/contracts";
-import {
-  createEmptyDocument,
-  createId,
-  deriveOutline,
-} from "@/lib/document-factory";
+import { createDocument } from "@/document";
+import { createId } from "@/lib/document-factory";
 
 const STAGE_LABELS: Record<WorkflowStage, string> = {
   idle: "Ready",
@@ -110,7 +108,14 @@ function reviewIterationFromMessage(message: string): 0 | 1 | 2 | 3 | null {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [document, setDocument] = useState<DocumentState>(() =>
-    createEmptyDocument(),
+    createDocument({
+      title: "Untitled document",
+      documentType: "Document",
+      audience: "General",
+      writingStyle: "professional",
+      instructions: null,
+      pageLimit: null,
+    }),
   );
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
@@ -157,13 +162,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     {
       name: "pdf_renderer",
       status: "ready",
-      message: "Temporary PDF renderer active until Teammate A merges.",
+      message: "Browser PDF renderer ready (A DocumentRenderer + toBlob).",
       remediation: null,
     },
     {
       name: "export",
       status: "ready",
-      message: "PDF export available via temporary renderer.",
+      message: "PDF export ready via session PdfPort.",
       remediation: null,
     },
   ]);
@@ -175,6 +180,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const previewUrlRef = useRef<string | null>(null);
   const publishedRenderRef = useRef<InternalRenderResult | null>(null);
   const pdfPort = useMemo(() => createSessionPdfPort(), []);
+  const documentPort = useMemo(() => createSessionDocumentPort(), []);
 
   documentRef.current = document;
   messagesRef.current = messages;
@@ -308,7 +314,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const generationBlocked = health?.status !== "ready";
 
-  const outline = useMemo(() => deriveOutline(document), [document]);
+  const outline = useMemo(
+    () => documentPort.outline(document) as OutlineItem[],
+    [document, documentPort],
+  );
   const actionsDisabled = turn.running;
   const stageLabel = STAGE_LABELS[turn.stage];
 
@@ -502,7 +511,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const anchor = window.document.createElement("a");
       anchor.href = url;
       anchor.download =
-        result.data.filename || downloadFileName(current.meta.title);
+        result.data.filename ||
+        downloadFileName(current.meta.title, current.version);
       anchor.click();
       URL.revokeObjectURL(url);
     });
@@ -545,7 +555,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
     if (!confirmed) return;
     abortRef.current?.abort();
-    setDocument(createEmptyDocument());
+    setDocument(
+      createDocument({
+        title: "Untitled document",
+        documentType: "Document",
+        audience: "General",
+        writingStyle: "professional",
+        instructions: null,
+        pageLimit: null,
+      }),
+    );
     setMessages([]);
     setReferenceImages([]);
     setCheckpoints([]);

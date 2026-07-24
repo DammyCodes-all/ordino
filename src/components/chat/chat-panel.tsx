@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
 import { ChatOutline } from "@/components/document-outline/chat-outline";
 import { ReferenceChips } from "@/components/reference-images/reference-chips";
+import { ReviewFindings } from "@/components/review/review-findings";
 import { StatusPanel } from "@/components/status-panel/status-panel";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -180,7 +181,8 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border-subtle bg-background/85 px-6 py-5 backdrop-blur-md sm:px-8">
+      <div className="shrink-0 bg-background/55 px-6 py-5 backdrop-blur-[1px] sm:px-8">
+        <ReviewFindings />
         <ChatOutline />
         <form
           onSubmit={(event) => void handleSubmit(event)}

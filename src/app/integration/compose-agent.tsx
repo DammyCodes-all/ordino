@@ -1,7 +1,7 @@
 "use client";
 
-import { createAgent, FakeDocumentPort } from "@/agent";
-import { renderFakePdfBlob } from "@/components/pdf-preview/fake-pdf-document";
+import { pdf } from "@react-pdf/renderer";
+import { createAgent } from "@/agent";
 import type {
   AgentPort,
   AgentRuntimeDependencies,
@@ -10,14 +10,22 @@ import type {
   GoogleAIConfiguration,
   InternalRenderResult,
   PdfPort,
-  ValidationReport,
   WorkflowEvent,
 } from "@/contracts";
 import { DEFAULT_GOOGLE_AI_CONFIGURATION } from "@/contracts";
+import { createDocumentPort, validateDocument } from "@/document";
 import { createErrorResult, createSuccessResult } from "@/google-ai";
+import { slugifyFilename } from "@/lib/pdf-filename";
+import {
+  chunkByPageBreaks,
+  DocumentRenderer,
+} from "@/pdf/components/DocumentRenderer";
 
-/** Temporary PDF port until Teammate A's `createPdfPort` merges. */
-class TemporaryPdfPort implements PdfPort {
+/**
+ * Browser-safe PdfPort using A's DocumentRenderer + toBlob.
+ * Does not import `@/pdf` (Node toBuffer / canvas / pdfjs legacy).
+ */
+class BrowserPdfPort implements PdfPort {
   async render(
     document: DocumentState,
     signal?: AbortSignal,
@@ -26,15 +34,18 @@ class TemporaryPdfPort implements PdfPort {
       return createErrorResult("ABORTED", "Render aborted.", false);
     }
     try {
-      const pdfBlob = await renderFakePdfBlob(document);
+      const pdfBlob = await pdf(
+        <DocumentRenderer document={document} />,
+      ).toBlob();
       if (signal?.aborted) {
         return createErrorResult("ABORTED", "Render aborted.", false);
       }
+      const pages = chunkByPageBreaks(document.nodes);
       return createSuccessResult({
         documentId: document.documentId,
         documentVersion: document.version,
         pdfBlob,
-        pageCount: Math.max(1, Math.ceil(document.nodes.length / 8)),
+        pageCount: Math.max(1, pages.length),
         renderedAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -53,17 +64,18 @@ class TemporaryPdfPort implements PdfPort {
     if (signal?.aborted) {
       return createErrorResult("ABORTED", "Rasterize aborted.", false);
     }
-    return createSuccessResult([
-      {
+    // Browser stub until a server rasterize route exists (Node canvas).
+    return createSuccessResult(
+      Array.from({ length: Math.max(1, render.pageCount) }, (_, index) => ({
         documentVersion: render.documentVersion,
-        pageNumber: 1,
-        mimeType: "image/png",
+        pageNumber: index + 1,
+        mimeType: "image/png" as const,
         dataUrl:
           "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
         widthPx: 100,
         heightPx: 100,
-      },
-    ]);
+      })),
+    );
   }
 
   async export(
@@ -79,7 +91,7 @@ class TemporaryPdfPort implements PdfPort {
       return createSuccessResult({
         documentId: document.documentId,
         documentVersion: document.version,
-        filename: `${document.meta.title.replace(/[^\w-]+/g, "_") || "ordino"}.pdf`,
+        filename: slugifyFilename(document.meta.title, document.version),
         blob: existingRender.pdfBlob,
       } satisfies ExportResult);
     }
@@ -91,13 +103,13 @@ class TemporaryPdfPort implements PdfPort {
     return createSuccessResult({
       documentId: document.documentId,
       documentVersion: document.version,
-      filename: `${document.meta.title.replace(/[^\w-]+/g, "_") || "ordino"}.pdf`,
+      filename: slugifyFilename(document.meta.title, document.version),
       blob: rendered.data.pdfBlob,
     });
   }
 }
 
-function passValidation(document: DocumentState): ValidationReport {
+function passPdfValidation(document: DocumentState) {
   return {
     documentVersion: document.version,
     pass: true,
@@ -110,19 +122,16 @@ export type ComposeAgentOptions = {
   configuration?: GoogleAIConfiguration;
 };
 
-/**
- * Teammate C integration composition.
- * Uses B's `createAgent` with temporary A-side fakes until `src/document` / `src/pdf` land.
- */
+/** Compose B's agent with A's document port + browser-safe PDF render. */
 export function composeAgent(options: ComposeAgentOptions): AgentPort {
-  const document = new FakeDocumentPort();
-  const pdf = new TemporaryPdfPort();
+  const document = createDocumentPort();
+  const pdfPort = new BrowserPdfPort();
 
   const dependencies: AgentRuntimeDependencies = {
     document,
-    pdf,
-    validateDocument: passValidation,
-    validatePdf: async (doc) => passValidation(doc),
+    pdf: pdfPort,
+    validateDocument,
+    validatePdf: async (doc) => passPdfValidation(doc),
     onEvent: options.onEvent,
   };
 
@@ -133,5 +142,9 @@ export function composeAgent(options: ComposeAgentOptions): AgentPort {
 }
 
 export function createSessionPdfPort(): PdfPort {
-  return new TemporaryPdfPort();
+  return new BrowserPdfPort();
+}
+
+export function createSessionDocumentPort() {
+  return createDocumentPort();
 }

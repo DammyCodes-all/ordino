@@ -1,3 +1,4 @@
+// @ts-expect-error pdfjs legacy build ships without TypeScript declarations
 import pdfjs from "pdfjs-dist/legacy/build/pdf.js";
 import type {
   InternalRenderResult,
