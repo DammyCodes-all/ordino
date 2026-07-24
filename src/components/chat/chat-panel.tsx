@@ -145,7 +145,12 @@ export function ChatPanel() {
               chatNarrow ? "max-w-none" : "max-w-2xl"
             }`}
           >
-            {messages.map((message) => (
+            {messages.map((message, index) => {
+              const isLiveAssistant =
+                turn.running &&
+                message.role === "assistant" &&
+                index === messages.length - 1;
+              return (
               <article
                 key={message.id}
                 className={`animate-fade-up ${
@@ -158,18 +163,26 @@ export function ChatPanel() {
               >
                 <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim">
                   {message.role === "user" ? "You" : "Ordino"}
+                  {isLiveAssistant ? " · typing" : ""}
                 </p>
                 <div
                   className={`rounded-3xl px-5 py-4 text-base leading-relaxed whitespace-pre-wrap ${
                     message.role === "user"
                       ? "bg-surface-raised text-foreground"
-                      : "bg-transparent text-foreground/95"
+                      : "bg-surface/70 text-foreground/95"
                   }`}
                 >
                   {message.text}
+                  {isLiveAssistant ? (
+                    <span
+                      className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-accent animate-pulse-soft"
+                      aria-hidden
+                    />
+                  ) : null}
                 </div>
               </article>
-            ))}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
         )}
