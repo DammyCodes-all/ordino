@@ -150,6 +150,20 @@ export const deleteNodeCommandSchema = z
   .object({ type: z.literal("delete_node"), nodeId: nodeIdSchema })
   .strict();
 
+export const editMetaCommandSchema = z
+  .object({
+    type: z.literal("edit_meta"),
+    patch: z
+      .object({
+        title: z.string().trim().min(1).max(200).optional(),
+      })
+      .strict()
+      .refine((patch) => Object.keys(patch).length > 0, {
+        message: "An edit_meta patch must contain at least one field.",
+      }),
+  })
+  .strict();
+
 const nonEmptyPatch = <T extends z.ZodRawShape>(shape: T) =>
   z
     .object(shape)
@@ -266,6 +280,7 @@ export const documentCommandSchema = z.union([
   editNodeCommandSchema,
   moveNodeCommandSchema,
   deleteNodeCommandSchema,
+  editMetaCommandSchema,
 ]);
 
 export const documentChangeSetSchema = z
@@ -328,6 +343,7 @@ export type AddNodeCommand = z.infer<typeof addNodeCommandSchema>;
 export type EditNodeCommand = z.infer<typeof editNodeCommandSchema>;
 export type MoveNodeCommand = z.infer<typeof moveNodeCommandSchema>;
 export type DeleteNodeCommand = z.infer<typeof deleteNodeCommandSchema>;
+export type EditMetaCommand = z.infer<typeof editMetaCommandSchema>;
 export type DocumentCommand = z.infer<typeof documentCommandSchema>;
 export type DocumentChangeSet = z.infer<typeof documentChangeSetSchema>;
 export type MutationReceipt = z.infer<typeof mutationReceiptSchema>;

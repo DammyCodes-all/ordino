@@ -44,14 +44,17 @@ describe("AgentOrchestrator acceptance tests", () => {
             sections: [{ heading: "Intro", purpose: "Intro text", estimatedParagraphs: 1, includeTable: false, includeList: false }],
           });
         } else if (callCount === 2) {
-          // runWriterLoop first step: add a heading node
-          text = JSON.stringify({
-            action: "addNode",
-            node: { type: "heading", level: 1, text: "Test Document" },
-            position: { kind: "end" },
-          });
+          // runBatchWriterLoop: returns array of actions
+          text = JSON.stringify([
+            {
+              action: "addNode",
+              node: { type: "heading", level: 1, text: "Test Document" },
+              position: { kind: "end" },
+            },
+            { action: "finalize" },
+          ]);
         } else {
-          // runWriterLoop subsequent steps: finalize
+          // subsequent calls: finalize
           text = JSON.stringify({ action: "finalize" });
         }
         return {

@@ -15,12 +15,22 @@ export const workflowStageSchema = z.enum([
   "cancelled",
 ]);
 
+export const toolCallEventSchema = z
+  .object({
+    action: z.string(),
+    nodeId: z.string().optional(),
+    label: z.string().optional(),
+    documentVersion: z.number(),
+  })
+  .strict();
+
 export const workflowEventSchema = z
   .object({
     stage: workflowStageSchema,
     message: z.string().min(1).max(300),
     level: z.enum(["info", "success", "warning", "error"]),
     createdAt: z.string().datetime(),
+    toolCall: toolCallEventSchema.optional(),
   })
   .strict();
 
@@ -38,5 +48,6 @@ export const agentTurnStateSchema = z
   .strict();
 
 export type WorkflowStage = z.infer<typeof workflowStageSchema>;
+export type ToolCallEvent = z.infer<typeof toolCallEventSchema>;
 export type WorkflowEvent = z.infer<typeof workflowEventSchema>;
 export type AgentTurnState = z.infer<typeof agentTurnStateSchema>;

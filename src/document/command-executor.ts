@@ -218,6 +218,12 @@ export function executeCommand(
     if (contentFields.some((f) => f in (command.patch as any))) {
       affectsPagination = true;
     }
+  } else if (command.type === "edit_meta") {
+    const { patch } = command;
+    if (patch.title !== undefined) {
+      doc.meta.title = patch.title;
+    }
+    affectsPagination = false;
   } else {
     return makeError("INVALID_NODE", "Unsupported command type");
   }

@@ -28,6 +28,7 @@ import type {
   InternalRenderResult,
   OutlineItem,
   ReferenceImage,
+  ToolCallEvent,
   ValidationReport,
   VisualReviewResult,
   WorkflowEvent,
@@ -121,12 +122,16 @@ type SessionContextValue = {
   actionsDisabled: boolean;
   chatHistory: ChatHistoryEntry[];
   activeChatId: string;
+  agentNarration: string;
+  liveToolCalls: ToolCallEvent[];
+  lastError: { message: string; retryable: boolean } | null;
   setPreviewOpen: (open: boolean) => void;
   setDisclosureOpen: (open: boolean) => void;
   setDiagnosticsOpen: (open: boolean) => void;
   acceptDisclosure: () => void;
   sendPrompt: (text: string) => Promise<void>;
   cancelTurn: () => void;
+  retry: () => void;
   undo: () => void;
   exportPdf: () => void;
   addReference: (file: File) => Promise<void>;
@@ -257,6 +262,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [diagnosticChecks, setDiagnosticChecks] =
     useState<DiagnosticCheck[]>(INITIAL_DIAGNOSTICS);
   const [diagnosticsReady, setDiagnosticsReady] = useState(false);
+  const [agentNarration, setAgentNarration] = useState("");
+  const [liveToolCalls, setLiveToolCalls] = useState<
+    import("@/contracts").ToolCallEvent[]
+  >([]);
+  const [lastError, setLastError] = useState<{
+    message: string;
+    retryable: boolean;
+  } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const documentRef = useRef(document);
@@ -469,6 +482,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setValidation(null);
       setVisualReview(null);
       setTurn({ running: true, stage: "planning", reviewIteration: 0 });
+      setAgentNarration("");
+      setLiveToolCalls([]);
+      setLastError(null);
 
       const liveAssistantId = createId("message");
       const liveAssistant: ConversationMessage = {
@@ -510,6 +526,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               ),
             );
           }
+        },
+        onThinking: (text) => {
+          setAgentNarration((prev) => prev + "\n" + text);
+        },
+        onToolCall: (event) => {
+          setLiveToolCalls((prev) => [...prev, event]);
         },
       });
 
@@ -587,6 +609,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           );
           setTurn({ running: false, stage: "cancelled", reviewIteration: 0 });
         } else {
+          const isRetryable =
+            (error as any).retryable === true ||
+            error.code === "MODEL_RATE_LIMITED" ||
+            error.code === "MODEL_SERVICE_UNAVAILABLE" ||
+            error.code === "MODEL_REQUEST_FAILED";
+          setLastError({
+            message: error.message.slice(0, 300) || STAGE_LABELS.failed,
+            retryable: isRetryable,
+          });
           setWorkflowEvents((prev) => [
             ...prev,
             {
@@ -640,6 +671,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     [generationBlocked, publishRender, turn.running],
   );
+
+  const retry = useCallback(() => {
+    if (turn.running || !lastError?.retryable) return;
+    const lastUserMsg = messagesRef.current.findLast(
+      (m) => m.role === "user",
+    );
+    if (lastUserMsg) {
+      void sendPrompt(lastUserMsg.text);
+    }
+  }, [turn.running, lastError, sendPrompt]);
 
   const undo = useCallback(() => {
     if (actionsDisabled || checkpoints.length === 0) return;
@@ -919,12 +960,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       actionsDisabled,
       chatHistory,
       activeChatId,
+      agentNarration,
+      liveToolCalls,
+      lastError,
       setPreviewOpen,
       setDisclosureOpen,
       setDiagnosticsOpen,
       acceptDisclosure,
       sendPrompt,
       cancelTurn,
+      retry,
       undo,
       exportPdf,
       addReference,
@@ -957,9 +1002,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       actionsDisabled,
       chatHistory,
       activeChatId,
+      agentNarration,
+      liveToolCalls,
+      lastError,
       acceptDisclosure,
       sendPrompt,
       cancelTurn,
+      retry,
       undo,
       exportPdf,
       addReference,
