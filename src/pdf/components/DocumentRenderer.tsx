@@ -1,98 +1,61 @@
 import React from "react";
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import type { DocumentState, DocumentNode, TableColumn } from "../../contracts/document";
-import theme from "../theme";
+import { Document, Page, View, Text } from "@react-pdf/renderer";
+import type { DocumentState, DocumentNode } from "../../contracts/document";
+import { THEME } from "../professional-theme";
+import { HeadingNode } from "./heading-node";
+import { ParagraphNode } from "./paragraph-node";
+import { ListNode } from "./list-node";
+import { TableNode } from "./table-node";
+import { QuoteNode } from "./quote-node";
+import { CalloutNode } from "./callout-node";
+import { DividerNode } from "./divider-node";
+import { PageBreakNode } from "./page-break-node";
 
-const styles = StyleSheet.create({
-  page: {
-    padding: theme.DEFAULT_MARGIN,
-    fontSize: theme.DEFAULT_FONT_SIZE,
-    fontFamily: theme.DEFAULT_FONT_FAMILY,
-  },
-  title: { fontSize: 18, marginBottom: 8 },
-  node: { marginBottom: 6 },
-  heading1: { fontSize: 20, fontWeight: 700, marginBottom: 6 },
-  heading2: { fontSize: 16, fontWeight: 700, marginBottom: 6 },
-  heading3: { fontSize: 14, fontWeight: 700, marginBottom: 6 },
-  paragraph: { fontSize: theme.DEFAULT_FONT_SIZE, marginBottom: 6 },
-  listItem: { flexDirection: "row", marginBottom: 4 },
-  listBullet: { width: 12 },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#eee", paddingVertical: 4 },
-  tableCell: { paddingHorizontal: 6 },
-  divider: { height: 1, backgroundColor: "#ddd", marginVertical: 8 },
-  quote: { fontStyle: "italic", marginLeft: 8, paddingLeft: 8, borderLeftWidth: 2, borderColor: "#ccc" },
-  callout: { padding: 8, backgroundColor: "#f7f7f7", borderRadius: 4, marginBottom: 8 },
-});
+const PAGE_STYLE = {
+  paddingTop: THEME.MARGIN.top,
+  paddingBottom: THEME.MARGIN.bottom,
+  paddingLeft: THEME.MARGIN.left,
+  paddingRight: THEME.MARGIN.right,
+};
 
 function renderNode(node: DocumentNode) {
   switch (node.type) {
     case "heading":
-      return (
-        <Text key={node.id} style={node.level === 1 ? styles.heading1 : node.level === 2 ? styles.heading2 : styles.heading3}>
-          {node.text}
-        </Text>
-      );
+      return <HeadingNode key={node.id} node={node} />;
     case "paragraph":
-      return (
-        <Text key={node.id} style={styles.paragraph}>
-          {node.text}
-        </Text>
-      );
+      return <ParagraphNode key={node.id} node={node} />;
     case "list":
-      return (
-        <View key={node.id}>
-          {node.items.map((item, idx) => (
-            <View key={`${node.id}-item-${idx}`} style={styles.listItem}>
-              <Text style={styles.listBullet}>{node.ordered ? `${idx + 1}.` : "•"}</Text>
-              <Text>{item}</Text>
-            </View>
-          ))}
-        </View>
-      );
+      return <ListNode key={node.id} node={node} />;
     case "table":
-      return (
-        <View key={node.id}>
-          <View style={{ flexDirection: "row", marginBottom: 4 }}>
-            {node.columns.map((col: TableColumn, ci: number) => (
-              <View key={`${node.id}-col-${ci}`} style={{ flex: col.widthPercent ? col.widthPercent : 1 }}>
-                <Text style={{ fontWeight: 700 }}>{col.header}</Text>
-              </View>
-            ))}
-          </View>
-          {node.rows.map((row, ri) => (
-            <View key={`${node.id}-row-${ri}`} style={styles.tableRow}>
-              {row.map((cell, ci) => (
-                <View key={`${node.id}-row-${ri}-cell-${ci}`} style={{ ...styles.tableCell, flex: node.columns[ci].widthPercent ? node.columns[ci].widthPercent : 1 }}>
-                  <Text>{cell}</Text>
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
-      );
+      return <TableNode key={node.id} node={node} />;
     case "quote":
-      return (
-        <View key={node.id}>
-          <Text style={styles.quote}>{node.text}</Text>
-          {node.attribution ? <Text style={{ textAlign: "right", marginTop: 4 }}>— {node.attribution}</Text> : null}
-        </View>
-      );
+      return <QuoteNode key={node.id} node={node} />;
     case "callout":
-      return (
-        <View key={node.id} style={styles.callout}>
-          {node.title ? <Text style={{ fontWeight: 700 }}>{node.title}</Text> : null}
-          <Text>{node.text}</Text>
-        </View>
-      );
+      return <CalloutNode key={node.id} node={node} />;
     case "divider":
-      return <View key={node.id} style={styles.divider} />;
+      return <DividerNode key={node.id} node={node} />;
     case "page_break":
-      return null;
+      return <PageBreakNode key={node.id} />;
     default:
-      return (
-        <Text key={(node as any).id}>{JSON.stringify(node as any)}</Text>
-      );
+      return null;
   }
+}
+
+function PageFooter({ pageNumber, title }: { pageNumber: number; title: string }) {
+  return (
+    <View
+      fixed
+      left={THEME.MARGIN.left}
+      right={THEME.MARGIN.right}
+      bottom={20}
+      flexDirection="row"
+      justifyContent="space-between"
+      alignItems="center"
+    >
+      <Text style={THEME.FOOTER_STYLE}>{title}</Text>
+      <Text style={THEME.PAGE_NUMBER_STYLE}>{pageNumber}</Text>
+    </View>
+  );
 }
 
 export function DocumentRenderer({ document }: { document: DocumentState }) {
@@ -108,14 +71,32 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
   }
   pages.push(current);
 
+  const title = document.meta.title || "Untitled";
+
   return (
     <Document>
       {pages.map((nodes, pi) => (
-        <Page key={`page-${pi}`} size={theme.PAGE_SIZE} style={styles.page} wrap>
-          <View>
-            {pi === 0 ? <Text style={styles.title}>{document.meta.title || "Untitled"}</Text> : null}
-          </View>
+        <Page
+          key={`page-${pi}`}
+          size={THEME.PAGE_SIZE}
+          style={PAGE_STYLE}
+          wrap
+        >
+          {pi === 0 ? (
+            <Text
+              style={{
+                fontSize: THEME.FONT_SIZES.title,
+                fontWeight: 700,
+                color: THEME.COLORS.text,
+                marginBottom: 20,
+                lineHeight: THEME.LINE_HEIGHT.tight,
+              }}
+            >
+              {title}
+            </Text>
+          ) : null}
           {nodes.map((n) => renderNode(n))}
+          <PageFooter pageNumber={pi + 1} title={title} />
         </Page>
       ))}
     </Document>
