@@ -61,6 +61,9 @@ export function StatusPanel() {
   const visible = reachedStages(turn.stage, workflowEvents);
   if (visible.length === 0) return null;
 
+  const activity = workflowEvents.slice(-8);
+  const latest = workflowEvents[workflowEvents.length - 1];
+
   return (
     <div
       className="mb-3 overflow-hidden rounded-2xl border border-border bg-surface/90 px-3 py-2.5 backdrop-blur-sm"
@@ -81,6 +84,12 @@ export function StatusPanel() {
           )}
         </p>
       </div>
+
+      {latest ? (
+        <p className="mb-2 text-sm leading-snug text-foreground">
+          {latest.message}
+        </p>
+      ) : null}
 
       <ol className="flex flex-col gap-1">
         <AnimatePresence initial={false} mode="popLayout">
@@ -135,6 +144,28 @@ export function StatusPanel() {
           })}
         </AnimatePresence>
       </ol>
+
+      {activity.length > 1 ? (
+        <div className="mt-2 max-h-36 overflow-y-auto border-t border-border-subtle pt-2">
+          <p className="mb-1 text-[10px] font-medium tracking-[0.12em] text-muted-dim uppercase">
+            Activity
+          </p>
+          <ul className="flex flex-col gap-1">
+            {activity.map((event, index) => (
+              <li
+                key={`${event.createdAt}-${index}`}
+                className={`text-[11px] leading-snug ${
+                  index === activity.length - 1
+                    ? "text-foreground"
+                    : "text-muted"
+                }`}
+              >
+                {event.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {turn.reviewIteration > 0 ? (
         <p className="mt-1.5 text-[11px] text-muted-dim">
