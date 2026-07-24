@@ -23,7 +23,12 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
 
         {document.nodes.map((n) => (
           <View key={n.id} style={styles.node}>
-            <Text>{n.type}: {('text' in n && typeof n.text === 'string') ? n.text : JSON.stringify(n)}</Text>
+            <Text>
+              {n.type}:{" "}
+              {"text" in n && typeof n.text === "string"
+                ? n.text
+                : JSON.stringify(n)}
+            </Text>
           </View>
         ))}
       </Page>

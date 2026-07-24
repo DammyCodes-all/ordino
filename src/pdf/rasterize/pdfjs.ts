@@ -1,16 +1,16 @@
-import { createCanvas } from "canvas";
 import pdfjs from "pdfjs-dist/legacy/build/pdf.js";
 import type {
   InternalRenderResult,
   RasterizedPage,
 } from "../../contracts/rendering";
 
+declare const require: any;
+
 pdfjs.GlobalWorkerOptions.workerSrc = ""; // Not needed in Node (use legacy build)
 
 export async function rasterizePdf(
   render: InternalRenderResult,
   signal?: AbortSignal,
-  declare const require: any;
 ): Promise<
   { success: true; data: RasterizedPage[] } | { success: false; error: any }
 > {
@@ -33,30 +33,45 @@ export async function rasterizePdf(
             retryable: false,
           },
         };
+
       const page = await pdf.getPage(i);
       const scale = 2; // default render scale for decent resolution
       const viewport = page.getViewport({ scale });
 
+      let createCanvas: any;
+      try {
+        createCanvas = require("canvas").createCanvas;
+      } catch (e) {
+        return {
+          success: false,
+          error: {
+            code: "RASTERIZATION_FAILED",
+            message: "canvas module not available in this environment",
+            retryable: false,
+          },
+        };
+      }
+
       const canvas = createCanvas(
         Math.ceil(viewport.width),
         Math.ceil(viewport.height),
-        let createCanvas: any;
-        try {
-          createCanvas = require("canvas").createCanvas;
-        } catch (e) {
-          return { success: false, error: { code: "RASTERIZATION_FAILED", message: "canvas module not available in this environment", retryable: false } };
-        }
+      );
+      const ctx = canvas.getContext("2d");
 
-        const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-        const ctx = canvas.getContext("2d");
+      // @ts-ignore - pdfjs types for render in Node
+      await page.render({ canvasContext: ctx as any, viewport }).promise;
 
-        // @ts-ignore - pdfjs types for render in Node
-        await page.render({ canvasContext: ctx as any, viewport }).promise;
+      const pngBuffer = canvas.toBuffer("image/png");
+      const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
 
-        const pngBuffer = canvas.toBuffer("image/png");
-        const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
-
-        pages.push({ documentVersion: render.documentVersion, pageNumber: i, mimeType: "image/png", dataUrl, widthPx: canvas.width, heightPx: canvas.height });
+      pages.push({
+        documentVersion: render.documentVersion,
+        pageNumber: i,
+        mimeType: "image/png",
+        dataUrl,
+        widthPx: canvas.width,
+        heightPx: canvas.height,
+      });
     }
 
     return { success: true, data: pages };
