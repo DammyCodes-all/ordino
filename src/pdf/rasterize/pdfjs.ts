@@ -1,16 +1,15 @@
+import { createCanvas } from "@napi-rs/canvas";
+import {
+  getDocument,
+  GlobalWorkerOptions,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
 import type {
   InternalRenderResult,
   RasterizedPage,
 } from "../../contracts/rendering";
 
-declare const require: (id: string) => any;
-
-// pdfjs legacy build has no TS declarations in this environment
-const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
-
-if (pdfjs?.GlobalWorkerOptions) {
-  pdfjs.GlobalWorkerOptions.workerSrc = "";
-}
+// Node rasterization does not need a web worker.
+GlobalWorkerOptions.workerSrc = "";
 
 export async function rasterizePdf(
   render: InternalRenderResult,
@@ -22,7 +21,7 @@ export async function rasterizePdf(
     const arrayBuffer = await render.pdfBlob.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
 
-    const loadingTask = pdfjs.getDocument({ data: uint8 });
+    const loadingTask = getDocument({ data: uint8 });
     const pdf = await loadingTask.promise;
 
     const pages: RasterizedPage[] = [];
@@ -44,7 +43,7 @@ export async function rasterizePdf(
       try {
         const textContent = await page.getTextContent();
         const text = textContent.items
-          .map((item: { str?: string }) => item.str ?? "")
+          .map((item) => ("str" in item ? String(item.str ?? "") : ""))
           .join(" ");
         pageTexts.push(text);
       } catch {
@@ -53,28 +52,17 @@ export async function rasterizePdf(
 
       const scale = 2;
       const viewport = page.getViewport({ scale });
-
-      let createCanvas: any;
-      try {
-        createCanvas = require("canvas").createCanvas;
-      } catch {
-        return {
-          success: false,
-          error: {
-            code: "RASTERIZATION_FAILED",
-            message: "canvas module not available in this environment",
-            retryable: false,
-          },
-        };
-      }
-
       const canvas = createCanvas(
         Math.ceil(viewport.width),
         Math.ceil(viewport.height),
       );
       const ctx = canvas.getContext("2d");
 
-      await page.render({ canvasContext: ctx as any, viewport }).promise;
+      await page.render({
+        canvasContext: ctx as unknown as CanvasRenderingContext2D,
+        viewport,
+        canvas: canvas as unknown as HTMLCanvasElement,
+      }).promise;
 
       const pngBuffer = canvas.toBuffer("image/png");
       const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
