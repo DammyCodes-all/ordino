@@ -181,7 +181,7 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 bg-background/55 px-6 py-5 backdrop-blur-[1px] sm:px-8">
+      <div className="shrink-0 px-6 py-5 sm:px-8">
         <ReviewFindings />
         <ChatOutline />
         <form

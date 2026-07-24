@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { Comfortaa, Geist, Geist_Mono } from "next/font/google";
-import {
-  ThemeProvider,
-  themeInitScript,
-} from "@/components/theme/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,17 +32,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${comfortaa.variable} h-full antialiased`}
     >
-      <head>
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: FOUC prevention for theme
-          dangerouslySetInnerHTML={{ __html: themeInitScript }}
-        />
-      </head>
       <body className="flex min-h-full flex-col text-foreground">
-        <ThemeProvider>{children}</ThemeProvider>
+        {children}
       </body>
     </html>
   );

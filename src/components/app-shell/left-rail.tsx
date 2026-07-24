@@ -4,12 +4,9 @@ import {
   Add01Icon,
   Alert02Icon,
   CloudIcon,
-  Moon02Icon,
   SidebarRightIcon,
-  Sun03Icon,
 } from "@hugeicons/core-free-icons";
 import { useSession } from "@/components/app-shell/session-context";
-import { useTheme } from "@/components/theme/theme-provider";
 import { AppIcon } from "@/components/ui/app-icon";
 
 function IconButton({
@@ -58,7 +55,6 @@ export function LeftRail() {
     setDiagnosticsOpen,
     setPreviewOpen,
   } = useSession();
-  const { theme, toggleTheme } = useTheme();
 
   const statusTone = generationBlocked
     ? "bg-danger"
@@ -67,7 +63,7 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="ml-10 mt-10 mb-10 flex w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
+    <aside className="ml-5 mt-5 mb-5 flex w-[var(--rail-width)] shrink-0 flex-col items-center rounded-full bg-surface/55 py-6 backdrop-blur-[2px]">
       <div className="mb-8 flex flex-col items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary">
           <span className="font-display text-sm text-primary-foreground">
@@ -116,18 +112,6 @@ export function LeftRail() {
       </nav>
 
       <div className="mb-5 flex flex-col items-center gap-3">
-        <IconButton
-          label={
-            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-          }
-          onClick={toggleTheme}
-        >
-          <AppIcon
-            icon={theme === "dark" ? Sun03Icon : Moon02Icon}
-            size={20}
-            title={theme === "dark" ? "Light mode" : "Dark mode"}
-          />
-        </IconButton>
         <p className="brand-wordmark-solid rotate-180 text-xs tracking-[0.16em] [writing-mode:vertical-rl]">
           ordino
         </p>
