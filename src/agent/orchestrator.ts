@@ -19,7 +19,7 @@ import { planDocument } from "./planner";
 import { ToolExecutor } from "./tool-executor";
 import { runVisualReview } from "@/review";
 import { prepareReviewCheckpoint } from "@/review/revision-context";
-import { runWriterLoop, runRevisionLoop } from "./writer";
+import { runBatchWriterLoop, runRevisionLoop } from "./writer";
 
 export class AgentOrchestrator implements AgentPort {
   private client: GoogleAIClient;
@@ -38,6 +38,10 @@ export class AgentOrchestrator implements AgentPort {
       level,
       createdAt: new Date().toISOString(),
     });
+  }
+
+  private narrate(text: string) {
+    this.dependencies.onThinking?.(text);
   }
 
   private checkAborted(signal?: AbortSignal, currentDoc?: DocumentState, checkpoints?: DocumentCheckpoint[], lastRender?: InternalRenderResult | null) {
@@ -68,6 +72,7 @@ export class AgentOrchestrator implements AgentPort {
       // 1. Planning (if initial generation)
       if (isInitialGen) {
         this.emit("planning", "Planning document structure (1 model call)…");
+        this.narrate("Planning a document structure based on your request…");
         const planRes = await planDocument(this.client, input, this.dependencies.document);
         if (!planRes.success) {
           return createErrorResult(
@@ -78,6 +83,8 @@ export class AgentOrchestrator implements AgentPort {
           ) as any;
         }
         documentPlan = planRes.data;
+        const sectionNames = documentPlan.sections.map((s) => s.heading).join(", ");
+        this.narrate(`Plan ready: ${documentPlan.sections.length} sections — ${sectionNames}`);
         this.emit(
           "planning",
           `Plan ready: ${documentPlan.sections.length} section${documentPlan.sections.length === 1 ? "" : "s"} — ${documentPlan.summary.slice(0, 120)}`,
@@ -95,11 +102,12 @@ export class AgentOrchestrator implements AgentPort {
       // 2. Generating (Writer loop)
       this.emit(
         "generating",
-        "Writing document — each step is a model call (can take a while)…",
+        "Writing document content…",
       );
+      this.narrate("Writing the document content…");
       const toolExec = new ToolExecutor(this.dependencies.document);
 
-      const writerResult = await runWriterLoop(
+      const writerResult = await runBatchWriterLoop(
         this.client,
         currentDoc,
         documentPlan ?? {
@@ -110,6 +118,8 @@ export class AgentOrchestrator implements AgentPort {
         input.userMessage,
         input.signal,
         (message) => this.emit("generating", message),
+        this.dependencies.onThinking,
+        this.dependencies.onToolCall,
       );
 
       if (!writerResult.success) {
@@ -131,9 +141,10 @@ export class AgentOrchestrator implements AgentPort {
       while (reviewIterations < 3) {
         // 3. Rendering
         this.emit("rendering", `Rendering document version ${currentDoc.version}`);
+        this.narrate("Content complete — rendering the PDF…");
         const renderRes = await this.dependencies.pdf.render(currentDoc, input.signal);
         if (!renderRes.success) {
-          // Failure to render
+          this.narrate("PDF rendering failed.");
           return createErrorResult(
             renderRes.error.code,
             renderRes.error.message,
@@ -142,10 +153,12 @@ export class AgentOrchestrator implements AgentPort {
           ) as any;
         }
         lastValidRender = renderRes.data;
+        this.narrate("PDF rendered successfully.");
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
         // 4. Validating
         this.emit("validating", "Running deterministic validation");
+        this.narrate("Checking document structure…");
         const docVal = this.dependencies.validateDocument(currentDoc);
         const pdfVal = await this.dependencies.validatePdf(currentDoc, lastValidRender);
         finalValidation = {
@@ -153,13 +166,20 @@ export class AgentOrchestrator implements AgentPort {
           pass: docVal.pass && pdfVal.pass,
           issues: [...docVal.issues, ...pdfVal.issues],
         };
+        if (finalValidation.pass) {
+          this.narrate("All structural checks passed.");
+        } else {
+          this.narrate(`Found ${finalValidation.issues.length} issue${finalValidation.issues.length === 1 ? "" : "s"} during validation.`);
+        }
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
         // 5. Rasterizing
         this.emit("rasterizing", "Rasterizing rendered pages for review");
+        this.narrate("Converting pages to images for visual review…");
         const rasterRes = await this.dependencies.pdf.rasterize(lastValidRender, input.signal);
         if (!rasterRes.success) {
-          // If rasterization fails, stop review loop and return valid render
+          this.narrate("Page image generation skipped — visual review will be unavailable.");
+          this.emit("rasterizing", "Rasterization failed — skipping visual review", "warning");
           break;
         }
         const rasterizedPages = rasterRes.data;
@@ -167,6 +187,7 @@ export class AgentOrchestrator implements AgentPort {
 
         // 6. Reviewing
         this.emit("reviewing", "Running visual review");
+        this.narrate("AI reviewing layout, typography, and spacing…");
         const outline = this.dependencies.document.outline(currentDoc);
         const reviewRes = await runVisualReview(
           this.client,
@@ -178,7 +199,8 @@ export class AgentOrchestrator implements AgentPort {
         );
 
         if (!reviewRes.success) {
-          // Vision review failure preserves render and returns visualReview: null
+          this.narrate("Visual review skipped — continuing with validation results only.");
+          this.emit("reviewing", "Visual review failed — continuing without it", "warning");
           finalVisualReview = null;
           break;
         }
@@ -187,6 +209,11 @@ export class AgentOrchestrator implements AgentPort {
           ...reviewRes.data,
           documentVersion: currentDoc.version,
         };
+        if (finalVisualReview.pass) {
+          this.narrate("Visual review passed — no layout issues found.");
+        } else {
+          this.narrate(`Visual review found ${finalVisualReview.issues.length} issue${finalVisualReview.issues.length === 1 ? "" : "s"}.`);
+        }
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
         // Check pass condition
@@ -197,10 +224,12 @@ export class AgentOrchestrator implements AgentPort {
         // 7. Revising
         reviewIterations++;
         if (reviewIterations >= 3) {
+          this.narrate("Reached maximum revision passes — delivering best version.");
           break; // Maximum iterations reached
         }
 
         this.emit("revising", `Executing revision pass ${reviewIterations}`);
+        this.narrate(`Revision pass ${reviewIterations}: fixing identified issues…`);
         const prep = await prepareReviewCheckpoint(currentDoc, this.dependencies.document);
         if (prep) {
           createdCheckpoints.push(prep.checkpoint);
@@ -215,19 +244,31 @@ export class AgentOrchestrator implements AgentPort {
           toolExec,
           input.signal,
           (message) => this.emit("revising", message),
+          this.dependencies.onThinking,
+          this.dependencies.onToolCall,
         );
         if (revisionResult.success) {
           currentDoc = revisionResult.data.document;
+          this.narrate("Revision complete.");
+        } else {
+          this.narrate("Revision step failed — continuing with current version.");
+          this.emit("revising", "Revision loop failed", "warning");
         }
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
       }
 
       this.emit("finalizing", "Finalizing agent turn");
+      this.narrate("Finalizing document…");
 
       const exportRes = await this.dependencies.pdf.export(currentDoc, lastValidRender ?? undefined, input.signal);
       const exportResult = exportRes.success ? exportRes.data : null;
+      if (!exportRes.success) {
+        this.narrate("PDF export encountered an issue — preview is still available.");
+        this.emit("finalizing", "Export failed — preview available", "warning");
+      }
 
       this.emit("ready", "Turn completed successfully");
+      this.narrate("All done.");
 
       return createSuccessResult({
         document: currentDoc,

@@ -16,7 +16,7 @@ import {
 import { type AppResult, appErrorSchema } from "./result";
 import { visualReviewResultSchema } from "./review";
 import { type ValidationReport, validationReportSchema } from "./validation";
-import type { WorkflowEvent } from "./workflow";
+import type { ToolCallEvent, WorkflowEvent } from "./workflow";
 
 export const agentTurnInputDataSchema = z
   .object({
@@ -76,6 +76,8 @@ export interface AgentRuntimeDependencies {
     render: InternalRenderResult,
   ): Promise<ValidationReport>;
   onEvent(event: WorkflowEvent): void;
+  onThinking?(text: string): void;
+  onToolCall?(event: ToolCallEvent): void;
 }
 
 export interface AgentPort {

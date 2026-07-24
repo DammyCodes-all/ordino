@@ -12,7 +12,6 @@ import { ChatOutline } from "@/components/document-outline/chat-outline";
 import { usePdfAnalysis } from "@/components/pdf-analysis/pdf-analysis-context";
 import { ReferenceChips } from "@/components/reference-images/reference-chips";
 import { ReviewFindings } from "@/components/review/review-findings";
-import { StatusPanel } from "@/components/status-panel/status-panel";
 import { AppIcon } from "@/components/ui/app-icon";
 import { GemmaVoicePanel } from "@/components/voice/gemma-voice-panel";
 
@@ -30,7 +29,10 @@ export function ChatPanel() {
     setDisclosureOpen,
     sendPrompt,
     cancelTurn,
+    retry,
     addReference,
+    agentNarration,
+    lastError,
   } = useSession();
   const { startFromUpload } = usePdfAnalysis();
   const [draft, setDraft] = useState("");
@@ -41,7 +43,7 @@ export function ChatPanel() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: progress events should keep the live turn in view
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, turn.running, stageLabel, turn.stage]);
+  }, [messages, turn.running, stageLabel, turn.stage, agentNarration]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: draft drives textarea autosize
   useEffect(() => {
@@ -150,6 +152,7 @@ export function ChatPanel() {
                 turn.running &&
                 message.role === "assistant" &&
                 index === messages.length - 1;
+              if (isLiveAssistant) return null;
               return (
               <article
                 key={message.id}
@@ -161,9 +164,12 @@ export function ChatPanel() {
                     : "mr-2"
                 }`}
               >
-                <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim">
+                <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim flex items-center gap-2">
+                  {message.role === "assistant" && (
+                    <span className="size-2 rounded-full bg-accent" />
+                  )}
                   {message.role === "user" ? "You" : "Ordino"}
-                  {isLiveAssistant ? " · typing" : ""}
+                  {isLiveAssistant ? " · working" : ""}
                 </p>
                 <div
                   className={`rounded-3xl px-5 py-4 text-base leading-relaxed whitespace-pre-wrap ${
@@ -183,6 +189,35 @@ export function ChatPanel() {
               </article>
               );
             })}
+            {turn.running && agentNarration ? (
+              <article className="animate-fade-up mr-2">
+                <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-accent animate-pulse-soft" />
+                  Ordino
+                </p>
+                <div className="rounded-3xl bg-surface/70 px-5 py-4 text-base leading-relaxed text-foreground/95">
+                  {agentNarration.split("\n").filter(Boolean).map((step, i) => (
+                    <div key={i} className={i > 0 ? "mt-3 border-t border-border-subtle pt-3" : ""}>
+                      {step}
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+            {turn.stage === "failed" && lastError?.retryable ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 animate-fade-up">
+                <p className="flex-1 text-sm text-danger">
+                  {lastError.message}
+                </p>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="shrink-0 rounded-full border border-danger px-4 py-1.5 text-sm text-danger transition-colors hover:bg-danger/10"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
             <div ref={bottomRef} />
           </div>
         )}
@@ -192,13 +227,6 @@ export function ChatPanel() {
         <GemmaVoicePanel />
         <ReviewFindings />
         <ChatOutline />
-        <div className={chatNarrow ? "w-full" : "mx-auto max-w-2xl"}>
-          {turn.running ||
-          turn.stage === "failed" ||
-          turn.stage === "cancelled" ? (
-            <StatusPanel />
-          ) : null}
-        </div>
         <form
           onSubmit={(event) => void handleSubmit(event)}
           className={chatNarrow ? "w-full" : "mx-auto max-w-2xl"}

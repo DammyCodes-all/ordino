@@ -7,6 +7,7 @@ import type {
   AgentRuntimeDependencies,
   GoogleAIConfiguration,
   PdfPort,
+  ToolCallEvent,
   WorkflowEvent,
 } from "@/contracts";
 import { DEFAULT_GOOGLE_AI_CONFIGURATION } from "@/contracts";
@@ -22,6 +23,8 @@ function passPdfValidation(documentVersion: number) {
 
 export type ComposeAgentOptions = {
   onEvent: (event: WorkflowEvent) => void;
+  onThinking?: (text: string) => void;
+  onToolCall?: (event: ToolCallEvent) => void;
   configuration?: GoogleAIConfiguration;
 };
 
@@ -36,6 +39,8 @@ export function composeAgent(options: ComposeAgentOptions): AgentPort {
     validateDocument,
     validatePdf: async (doc) => passPdfValidation(doc.version),
     onEvent: options.onEvent,
+    onThinking: options.onThinking,
+    onToolCall: options.onToolCall,
   };
 
   return createAgent(

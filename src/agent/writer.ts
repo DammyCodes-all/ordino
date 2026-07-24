@@ -3,24 +3,26 @@ import type {
   DocumentState,
   DocumentPlan,
   AppResult,
+  ToolCallEvent,
 } from "@/contracts";
 import { newDocumentNodeSchema, nodePositionSchema, nodeIdSchema } from "@/contracts";
 import { GoogleAIClient, generateStructuredOutput, type ToolDefinition, type ToolCallResult } from "@/google-ai";
 import { ToolExecutor } from "./tool-executor";
 import { buildRevisionPrompt, type CombinedRevisionContext } from "@/review/revision-context";
 
-const MAX_WRITER_STEPS = 20;
+const MAX_WRITER_STEPS = 10;
 
-const WRITER_ACTION_EXAMPLES = `Output exactly one JSON object per step (no markdown fences). Valid actions:
+const WRITER_ACTION_EXAMPLES = `Output exactly one JSON object per step (no markdown fences). Every action MUST include a "thinking" field: a 1-sentence description of what you are doing and why. This will be shown to the user as you work.
 
-{"action":"addNode","node":{"type":"heading","level":1,"text":"Title"},"position":{"kind":"end"}}
-{"action":"addNode","node":{"type":"paragraph","text":"Body text."},"position":{"kind":"end"}}
-{"action":"addNode","node":{"type":"list","ordered":false,"items":["One","Two"]},"position":{"kind":"end"}}
-{"action":"editNode","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Updated text"}}
-{"action":"moveNode","nodeId":"node_id","position":{"kind":"before","nodeId":"other_id"}}
-{"action":"deleteNode","nodeId":"node_id"}
-{"action":"readNode","nodeId":"node_id"}
-{"action":"finalize"}
+{"action":"addNode","thinking":"Adding the document title as an H1 heading.","node":{"type":"heading","level":1,"text":"Title"},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Writing the opening paragraph to introduce the topic.","node":{"type":"paragraph","text":"Body text."},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a bullet list of key points.","node":{"type":"list","ordered":false,"items":["One","Two"]},"position":{"kind":"end"}}
+{"action":"editNode","thinking":"Updating the paragraph with more detail.","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Updated text"}}
+{"action":"moveNode","thinking":"Reordering to improve document flow.","nodeId":"node_id","position":{"kind":"before","nodeId":"other_id"}}
+{"action":"deleteNode","thinking":"Removing redundant content.","nodeId":"node_id"}
+{"action":"readNode","thinking":"Reading node content for context.","nodeId":"node_id"}
+{"action":"editMeta","thinking":"Updating the document title to better reflect the content.","patch":{"title":"Better Title"}}
+{"action":"finalize","thinking":"Document is complete."}
 
 Position MUST use "kind" (never "anchor"):
 - {"kind":"end"}
@@ -50,33 +52,46 @@ function coerceWriterActionJson(value: unknown): unknown {
   return action;
 }
 
+const thinkingField = z.string().min(1).max(200).optional();
+
 const writerActionSchemaRaw = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("addNode"),
+    thinking: thinkingField,
     node: newDocumentNodeSchema,
     position: nodePositionSchema,
   }).strict(),
   z.object({
     action: z.literal("editNode"),
+    thinking: thinkingField,
     nodeId: nodeIdSchema,
     nodeType: z.enum(["heading", "paragraph", "list", "table", "quote", "callout", "divider"]),
     patch: z.record(z.string(), z.unknown()),
   }).strict(),
   z.object({
     action: z.literal("moveNode"),
+    thinking: thinkingField,
     nodeId: nodeIdSchema,
     position: nodePositionSchema,
   }).strict(),
   z.object({
     action: z.literal("deleteNode"),
+    thinking: thinkingField,
     nodeId: nodeIdSchema,
   }).strict(),
   z.object({
     action: z.literal("readNode"),
+    thinking: thinkingField,
     nodeId: nodeIdSchema,
   }).strict(),
   z.object({
+    action: z.literal("editMeta"),
+    thinking: thinkingField,
+    patch: z.object({ title: z.string().trim().min(1).max(200).optional() }).strict(),
+  }).strict(),
+  z.object({
     action: z.literal("finalize"),
+    thinking: thinkingField,
   }).strict(),
 ]);
 
@@ -86,6 +101,10 @@ const writerActionSchema = z.preprocess(
   coerceWriterActionJson,
   writerActionSchemaRaw,
 ) as z.ZodType<WriterAction>;
+
+const MAX_BATCH_ATTEMPTS = 3;
+
+const batchWriterActionSchema = z.array(writerActionSchema).min(1).max(30);
 
 function executeAction(
   action: WriterAction,
@@ -103,6 +122,8 @@ function executeAction(
       return toolExecutor.deleteNode(currentDoc, { nodeId: action.nodeId });
     case "readNode":
       return toolExecutor.readNode(currentDoc, { nodeId: action.nodeId });
+    case "editMeta":
+      return toolExecutor.editMeta(currentDoc, action.patch);
     case "finalize":
       return { result: { success: true, data: {} }, updatedDoc: currentDoc };
   }
@@ -149,6 +170,46 @@ ${WRITER_ACTION_EXAMPLES}
 Write the document section by section based on the plan.${historyBlock}`;
 }
 
+function buildBatchWriterPrompt(
+  document: DocumentState,
+  plan: DocumentPlan,
+  userMessage: string,
+  readResults?: Map<string, any>,
+): string {
+  const outlineLines = document.nodes.map((n, i) =>
+    `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`
+  ).join("\n");
+
+  const planSections = plan.sections.map((s, i) =>
+    `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`
+  ).join("\n");
+
+  const readBlock = readResults && readResults.size > 0
+    ? `\n[Read node content]\n${Array.from(readResults.entries())
+        .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
+        .join("\n")}`
+    : "";
+
+  return `${userMessage}
+
+[Document plan]
+${plan.summary}
+${planSections}
+
+[Current outline]
+${outlineLines || "  (empty document)"}
+${readBlock}
+
+Generate ALL remaining content for this document as a JSON array of actions.
+Each element must be a valid action object.
+Include full heading text and paragraph content inline in addNode actions.
+Complete every section from the plan.
+End the array with {"action":"finalize"} when all content is complete.
+
+Available actions:
+${WRITER_ACTION_EXAMPLES}`;
+}
+
 function formatActionResult(action: WriterAction, result: any): string {
   if (!result || !result.success) {
     return `FAILED — ${result?.error?.message || "unknown error"}`;
@@ -192,6 +253,8 @@ function describeActionProgress(step: number, action: WriterAction, ok: boolean)
       return `${prefix}: read a node`;
     case "finalize":
       return `${prefix}: finalized writing`;
+    default:
+      return `${prefix}: ${action.action}`;
   }
 }
 
@@ -203,6 +266,8 @@ export async function runWriterLoop(
   userMessage: string,
   signal?: AbortSignal,
   onProgress?: (message: string) => void,
+  onThinking?: (text: string) => void,
+  onToolCall?: (event: ToolCallEvent) => void,
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const history: string[] = [];
@@ -227,7 +292,7 @@ export async function runWriterLoop(
       client,
       {
         prompt,
-        systemPrompt: "You are Ordino, an AI document writer. Output one action as JSON matching the provided schema. Build the document section by section according to the plan.",
+        systemPrompt: "You are Ordino, an AI document writer. Output one action as JSON matching the provided schema. Every action MUST include a \"thinking\" field with a 1-sentence description of what you are doing. Build the document section by section according to the plan.",
         signal,
       },
       writerActionSchema,
@@ -239,6 +304,11 @@ export async function runWriterLoop(
     }
 
     const action = res.data as WriterAction;
+
+    // Stream the AI's thinking to the user
+    if (action.thinking) {
+      onThinking?.(action.thinking);
+    }
 
     if (action.action === "finalize") {
       history.push(`  Step ${steps}: finalized`);
@@ -259,6 +329,18 @@ export async function runWriterLoop(
         readResults.set(action.nodeId, r.result.data.node);
       }
     }
+
+    // Emit tool call event
+    if (onToolCall) {
+      const label = action.thinking || describeActionProgress(steps, action, !!r.result.success);
+      onToolCall({
+        action: action.action,
+        nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
+        label,
+        documentVersion: currentDoc.version,
+      });
+    }
+
     onProgress?.(describeActionProgress(steps, action, !!r.result.success));
     history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
   }
@@ -273,6 +355,112 @@ export async function runWriterLoop(
   };
 }
 
+export async function runBatchWriterLoop(
+  client: GoogleAIClient,
+  document: DocumentState,
+  plan: DocumentPlan,
+  toolExecutor: ToolExecutor,
+  userMessage: string,
+  signal?: AbortSignal,
+  onProgress?: (message: string) => void,
+  onThinking?: (text: string) => void,
+  onToolCall?: (event: ToolCallEvent) => void,
+): Promise<AppResult<{ document: DocumentState; message: string }>> {
+  let currentDoc = document;
+  const readResults = new Map<string, any>();
+  let batchAttempts = 0;
+
+  while (batchAttempts < MAX_BATCH_ATTEMPTS) {
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+      };
+    }
+    batchAttempts++;
+    onProgress?.(`Batch ${batchAttempts}/${MAX_BATCH_ATTEMPTS}: generating all remaining content…`);
+
+    const prompt = buildBatchWriterPrompt(currentDoc, plan, userMessage, readResults);
+
+    const res = await generateStructuredOutput(
+      client,
+      {
+        prompt,
+        systemPrompt: "You are Ordino, an AI document writer. Output a JSON array of actions to build the remaining document content. Every action MUST include a \"thinking\" field with a 1-sentence description of what you are doing.",
+        signal,
+      },
+      batchWriterActionSchema,
+    );
+
+    if (!res.success) {
+      onProgress?.(`Batch ${batchAttempts} failed — falling back to single-step…`);
+      return runWriterLoop(client, currentDoc, plan, toolExecutor, userMessage, signal, onProgress, onThinking, onToolCall);
+    }
+
+    const actions = res.data;
+    let finalized = false;
+
+    for (const action of actions) {
+      if (signal?.aborted) {
+        return {
+          success: false,
+          error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        };
+      }
+
+      if (action.thinking) {
+        onThinking?.(action.thinking);
+      }
+
+      if (action.action === "finalize") {
+        finalized = true;
+        continue;
+      }
+
+      const r = executeAction(action, currentDoc, toolExecutor);
+      if (r.result.success) {
+        currentDoc = r.updatedDoc;
+        if (action.action === "readNode" && r.result.data?.node) {
+          readResults.set(action.nodeId, r.result.data.node);
+        }
+      }
+
+      if (onToolCall) {
+        const label = action.thinking || describeActionProgress(batchAttempts, action, !!r.result.success);
+        onToolCall({
+          action: action.action,
+          nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
+          label,
+          documentVersion: currentDoc.version,
+        });
+      }
+
+      onProgress?.(describeActionProgress(batchAttempts, action, !!r.result.success));
+    }
+
+    if (finalized) {
+      return {
+        success: true,
+        data: {
+          document: currentDoc,
+          message: `Document written in ${batchAttempts} batch${batchAttempts === 1 ? "" : "es"}.`,
+        },
+      };
+    }
+
+    onProgress?.(`Batch ${batchAttempts} done — more content needed, trying next batch…`);
+  }
+
+  onProgress?.(`Reached max ${MAX_BATCH_ATTEMPTS} batch attempts — continuing to render`);
+  return {
+    success: true,
+    data: {
+      document: currentDoc,
+      message: `Document written (reached max ${MAX_BATCH_ATTEMPTS} batch attempts).`,
+    },
+  };
+}
+
 export async function runRevisionLoop(
   client: GoogleAIClient,
   document: DocumentState,
@@ -281,6 +469,8 @@ export async function runRevisionLoop(
   toolExecutor: ToolExecutor,
   signal?: AbortSignal,
   onProgress?: (message: string) => void,
+  onThinking?: (text: string) => void,
+  onToolCall?: (event: ToolCallEvent) => void,
 ): Promise<AppResult<{ document: DocumentState }>> {
   let currentDoc = document;
   const history: string[] = [];
@@ -310,7 +500,7 @@ export async function runRevisionLoop(
       client,
       {
         prompt,
-        systemPrompt: "You are a document revision assistant. Output one action per step. Call finalize when done.",
+        systemPrompt: "You are a document revision assistant. Output one action per step. Every action MUST include a \"thinking\" field describing what you are fixing. Call finalize when done.",
         signal,
       },
       writerActionSchema,
@@ -322,6 +512,10 @@ export async function runRevisionLoop(
     }
 
     const action = res.data as WriterAction;
+
+    if (action.thinking) {
+      onThinking?.(action.thinking);
+    }
 
     if (action.action === "finalize") {
       onProgress?.(describeActionProgress(steps, action, true));
@@ -338,6 +532,17 @@ export async function runRevisionLoop(
     } else {
       history.push(`  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`);
     }
+
+    if (onToolCall) {
+      const label = action.thinking || describeActionProgress(steps, action, !!r.result.success);
+      onToolCall({
+        action: action.action,
+        nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
+        label,
+        documentVersion: currentDoc.version,
+      });
+    }
+
     onProgress?.(describeActionProgress(steps, action, !!r.result.success));
   }
 

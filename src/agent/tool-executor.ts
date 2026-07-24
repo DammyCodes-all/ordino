@@ -101,6 +101,24 @@ export class ToolExecutor {
     return { result: res, updatedDoc: doc };
   }
 
+  editMeta(
+    doc: DocumentState,
+    patch: { title?: string },
+  ): { result: AppResult<MutationReceipt>; updatedDoc: DocumentState } {
+    const res = this.documentPort.execute(doc, {
+      type: "edit_meta",
+      patch,
+    } as any);
+
+    if (res.success) {
+      return {
+        result: createSuccessResult(res.data.receipt),
+        updatedDoc: res.data.document,
+      };
+    }
+    return { result: res, updatedDoc: doc };
+  }
+
   finalizeDocument(
     doc: DocumentState,
   ): { result: AppResult<FinalizeReceipt>; updatedDoc: DocumentState } {
