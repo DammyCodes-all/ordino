@@ -15,6 +15,7 @@
     "@ai-sdk/google": "4.0.23",
     "@hugeicons/core-free-icons": "^4.2.3",
     "@hugeicons/react": "^1.1.9",
+    "@napi-rs/canvas": "^1.0.2",
     "@react-pdf/renderer": "4.5.1",
     "ai": "7.0.37",
     "idb": "8.0.3",
