@@ -33,6 +33,15 @@ function IconButton({
   );
 }
 
+function RailIcon({ title, path }: { title: string; path: React.ReactNode }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" role="img">
+      <title>{title}</title>
+      {path}
+    </svg>
+  );
+}
+
 export function LeftRail() {
   const {
     actionsDisabled,
@@ -60,7 +69,10 @@ export function LeftRail() {
         <div className="flex size-10 items-center justify-center rounded-2xl bg-accent-soft text-sm font-semibold tracking-tight text-accent">
           Or
         </div>
-        <span className={`size-2 rounded-full ${statusTone}`} title="Session status" />
+        <span
+          className={`size-2 rounded-full ${statusTone}`}
+          title="Session status"
+        />
       </div>
 
       <nav className="flex flex-1 flex-col items-center gap-1">
@@ -69,14 +81,17 @@ export function LeftRail() {
           onClick={newDocument}
           disabled={actionsDisabled}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 5v14M5 12h14"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-            />
-          </svg>
+          <RailIcon
+            title="New document"
+            path={
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+              />
+            }
+          />
         </IconButton>
 
         <IconButton
@@ -84,14 +99,17 @@ export function LeftRail() {
           onClick={() => setRightPanelOpen(!rightPanelOpen)}
           active={rightPanelOpen}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M14 4h5v16h-5M5 4h7v16H5z"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <RailIcon
+            title="Document panel"
+            path={
+              <path
+                d="M14 4h5v16h-5M5 4h7v16H5z"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinejoin="round"
+              />
+            }
+          />
         </IconButton>
 
         <IconButton
@@ -99,14 +117,17 @@ export function LeftRail() {
           onClick={() => setDisclosureOpen(true)}
           active={disclosureOpen || !cloudDisclosureAccepted}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M7 18h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.7-1.5A3.5 3.5 0 0 0 7 18Z"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <RailIcon
+            title="Cloud disclosure"
+            path={
+              <path
+                d="M7 18h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.7-1.5A3.5 3.5 0 0 0 7 18Z"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinejoin="round"
+              />
+            }
+          />
         </IconButton>
 
         <IconButton
@@ -114,15 +135,18 @@ export function LeftRail() {
           onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
           active={diagnosticsOpen || generationBlocked}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 8v4m0 4h.01M10.3 4.3 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <RailIcon
+            title="Diagnostics"
+            path={
+              <path
+                d="M12 8v4m0 4h.01M10.3 4.3 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            }
+          />
         </IconButton>
       </nav>
 

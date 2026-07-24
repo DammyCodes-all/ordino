@@ -14,7 +14,7 @@ export function ReferenceChips() {
           key={image.id}
           className="group flex items-center gap-2 rounded-full border border-border bg-surface py-1 pr-1 pl-1"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* biome-ignore lint/performance/noImgElement: data-URL thumbnails */}
           <img
             src={image.dataUrl}
             alt=""

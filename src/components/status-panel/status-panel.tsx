@@ -1,6 +1,9 @@
 "use client";
 
-import { STAGE_LABELS, useSession } from "@/components/app-shell/session-context";
+import {
+  STAGE_LABELS,
+  useSession,
+} from "@/components/app-shell/session-context";
 import type { WorkflowStage } from "@/contracts";
 
 const PIPELINE: WorkflowStage[] = [
@@ -89,9 +92,7 @@ export function StatusPanel() {
           </p>
           <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto text-xs text-muted">
             {workflowEvents.map((event) => (
-              <li key={`${event.stage}-${event.createdAt}`}>
-                {event.message}
-              </li>
+              <li key={`${event.stage}-${event.createdAt}`}>{event.message}</li>
             ))}
           </ul>
         </div>

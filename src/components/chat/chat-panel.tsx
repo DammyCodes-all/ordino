@@ -11,6 +11,7 @@ export function ChatPanel() {
     stageLabel,
     actionsDisabled,
     generationBlocked,
+    cloudDisclosureAccepted,
     sendPrompt,
     cancelTurn,
     addReference,
@@ -20,10 +21,14 @@ export function ChatPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Scroll when the thread or live stage changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stageLabel/turn.running intentionally retrigger scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, turn.running, stageLabel]);
 
+  // Resize the composer to match draft content.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft drives textarea autosize
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -37,7 +42,9 @@ export function ChatPanel() {
     event?.preventDefault();
     const text = draft;
     if (!text.trim() || actionsDisabled || generationBlocked) return;
-    setDraft("");
+    if (cloudDisclosureAccepted) {
+      setDraft("");
+    }
     await sendPrompt(text);
   }
 
@@ -161,7 +168,14 @@ export function ChatPanel() {
               onClick={() => fileRef.current?.click()}
               className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                role="img"
+              >
+                <title>Attach reference image</title>
                 <path
                   d="M21 12.5V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h5.5M16 3h5v5M14 10l7-7"
                   stroke="currentColor"
@@ -183,13 +197,18 @@ export function ChatPanel() {
             />
             <button
               type="submit"
-              disabled={
-                actionsDisabled || generationBlocked || !draft.trim()
-              }
+              disabled={actionsDisabled || generationBlocked || !draft.trim()}
               className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-background transition-opacity disabled:opacity-30"
               aria-label="Send"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                role="img"
+              >
+                <title>Send</title>
                 <path
                   d="M5 12h14M13 6l6 6-6 6"
                   stroke="currentColor"
@@ -201,8 +220,8 @@ export function ChatPanel() {
             </button>
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-dim">
-            Enter to send · Shift+Enter for newline · References stay local until
-            a turn runs
+            Enter to send · Shift+Enter for newline · References stay local
+            until a turn runs
           </p>
         </form>
       </div>

@@ -2,13 +2,13 @@
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import type {
   AgentTurnState,
@@ -116,7 +116,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
 }
@@ -172,20 +173,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const documentRef = useRef(document);
   documentRef.current = document;
 
-  const pushEvent = useCallback((stage: WorkflowStage, level: WorkflowEvent["level"] = "info") => {
-    const event: WorkflowEvent = {
-      stage,
-      message: STAGE_LABELS[stage],
-      level,
-      createdAt: new Date().toISOString(),
-    };
-    setWorkflowEvents((prev) => [...prev, event]);
-    setTurn((prev) => ({
-      ...prev,
-      stage,
-      running: stage !== "ready" && stage !== "failed" && stage !== "cancelled" && stage !== "idle",
-    }));
-  }, []);
+  const pushEvent = useCallback(
+    (stage: WorkflowStage, level: WorkflowEvent["level"] = "info") => {
+      const event: WorkflowEvent = {
+        stage,
+        message: STAGE_LABELS[stage],
+        level,
+        createdAt: new Date().toISOString(),
+      };
+      setWorkflowEvents((prev) => [...prev, event]);
+      setTurn((prev) => ({
+        ...prev,
+        stage,
+        running:
+          stage !== "ready" &&
+          stage !== "failed" &&
+          stage !== "cancelled" &&
+          stage !== "idle",
+      }));
+    },
+    [],
+  );
 
   const refreshHealth = useCallback(async () => {
     setDiagnosticChecks((prev) =>
@@ -214,7 +222,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                   ...check,
                   status: "failed",
                   message: "Unexpected health response.",
-                  remediation: "Retry the health check or restart the dev server.",
+                  remediation:
+                    "Retry the health check or restart the dev server.",
                 }
               : check,
           ),
@@ -249,7 +258,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 ...check,
                 status: "failed",
                 message: "Could not reach the health route.",
-                remediation: "Confirm the Next.js server is running and online.",
+                remediation:
+                  "Confirm the Next.js server is running and online.",
               }
             : check,
         ),
@@ -375,10 +385,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const url = URL.createObjectURL(blob);
     const anchor = window.document.createElement("a");
     anchor.href = url;
-    anchor.download = `${document.meta.title.replace(/[^\w\-]+/g, "_") || "ordino"}.txt`;
+    anchor.download = `${document.meta.title.replace(/[^\w-]+/g, "_") || "ordino"}.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
-  }, [document.meta.title, document.nodes.length, document.version, publishedPreview]);
+  }, [
+    document.meta.title,
+    document.nodes.length,
+    document.version,
+    publishedPreview,
+  ]);
 
   const addReference = useCallback(
     async (file: File) => {

@@ -48,7 +48,8 @@ export async function GET(request: Request): Promise<Response> {
         provider: "google-ai-studio",
         modelId,
         status: "unavailable",
-        message: "Google AI Studio could not be reached with this configuration.",
+        message:
+          "Google AI Studio could not be reached with this configuration.",
       }),
       { status: 503 },
     );

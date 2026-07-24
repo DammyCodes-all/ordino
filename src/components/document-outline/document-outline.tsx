@@ -37,7 +37,9 @@ export function DocumentOutline() {
           <span className="mt-0.5 w-4 shrink-0 text-center font-mono text-[10px] text-accent-dim">
             {TYPE_LABELS[item.type] ?? "·"}
           </span>
-          <span className="leading-snug text-foreground/85">{item.preview}</span>
+          <span className="leading-snug text-foreground/85">
+            {item.preview}
+          </span>
         </div>
       ))}
     </div>

@@ -1,19 +1,29 @@
 import {
+  type CheckpointId,
+  checkpointIdSchema,
   type DocumentCheckpoint,
+  type DocumentId,
   type DocumentNode,
   type DocumentState,
-  type OutlineItem,
-  checkpointIdSchema,
   documentIdSchema,
   documentStateSchema,
+  type MessageId,
   messageIdSchema,
+  type NodeId,
   nodeIdSchema,
+  type OutlineItem,
+  type ReferenceImageId,
   referenceImageIdSchema,
 } from "@/contracts";
 
+export function createId(kind: "document"): DocumentId;
+export function createId(kind: "node"): NodeId;
+export function createId(kind: "message"): MessageId;
+export function createId(kind: "reference"): ReferenceImageId;
+export function createId(kind: "checkpoint"): CheckpointId;
 export function createId(
   kind: "document" | "node" | "message" | "reference" | "checkpoint",
-) {
+): DocumentId | NodeId | MessageId | ReferenceImageId | CheckpointId {
   const raw = crypto.randomUUID();
   switch (kind) {
     case "document":
@@ -29,7 +39,9 @@ export function createId(
   }
 }
 
-export function createEmptyDocument(title = "Untitled document"): DocumentState {
+export function createEmptyDocument(
+  title = "Untitled document",
+): DocumentState {
   return documentStateSchema.parse({
     schemaVersion: 1,
     documentId: createId("document"),
@@ -55,13 +67,10 @@ const defaultSpacing = {
 export function createMockDocumentFromPrompt(prompt: string): DocumentState {
   const title =
     prompt.trim().slice(0, 80).replace(/\s+/g, " ") || "Untitled document";
-  const headingId = createId("node");
-  const paragraphId = createId("node");
-  const listId = createId("node");
 
   const nodes: DocumentNode[] = [
     {
-      id: headingId,
+      id: createId("node"),
       type: "heading",
       level: 1,
       text: title,
@@ -73,7 +82,7 @@ export function createMockDocumentFromPrompt(prompt: string): DocumentState {
       },
     },
     {
-      id: paragraphId,
+      id: createId("node"),
       type: "paragraph",
       text: `Draft generated from your request: “${prompt.trim().slice(0, 280)}”. This preview is a mock until the document and agent modules are connected.`,
       style: {
@@ -83,7 +92,7 @@ export function createMockDocumentFromPrompt(prompt: string): DocumentState {
       },
     },
     {
-      id: listId,
+      id: createId("node"),
       type: "list",
       ordered: true,
       items: [
