@@ -42,6 +42,19 @@ import {
   createSuccessResult,
 } from "@/google-ai";
 import { createId } from "@/lib/document-factory";
+import {
+  appendNarration,
+  narrateTurnFailure,
+  narrateTurnStart,
+  narrateTurnSuccess,
+  narrateWorkflowEvent,
+} from "@/lib/agent-narration";
+import {
+  type ChatHistoryEntry as PersistedHistoryEntry,
+  type ChatSnapshot as PersistedSnapshot,
+  loadWorkspace,
+  saveWorkspace,
+} from "@/lib/chat-persistence";
 
 const INITIAL_DIAGNOSTIC_NAMES: DiagnosticName[] = [
   "api_key",
@@ -80,25 +93,9 @@ const STAGE_LABELS: Record<WorkflowStage, string> = {
   cancelled: "Cancelled",
 };
 
-export type ChatHistoryEntry = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  snippet: string;
-};
+export type ChatHistoryEntry = PersistedHistoryEntry;
 
-type ChatSnapshot = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  document: DocumentState;
-  messages: ConversationMessage[];
-  referenceImages: ReferenceImage[];
-  checkpoints: DocumentCheckpoint[];
-  workflowEvents: WorkflowEvent[];
-  validation: ValidationReport | null;
-  visualReview: VisualReviewResult | null;
-};
+type ChatSnapshot = PersistedSnapshot;
 
 type SessionContextValue = {
   document: DocumentState;
@@ -272,6 +269,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const previewUrlRef = useRef<string | null>(null);
   const publishedRenderRef = useRef<InternalRenderResult | null>(null);
   const snapshotsRef = useRef(new Map<string, ChatSnapshot>());
+  const hydratedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pdfPort = useMemo(() => createSessionPdfPort(), []);
   const documentPort = useMemo(() => createSessionDocumentPort(), []);
 
@@ -471,6 +470,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setVisualReview(null);
       setTurn({ running: true, stage: "planning", reviewIteration: 0 });
 
+      const liveAssistantId = createId("message");
+      const liveAssistant: ConversationMessage = {
+        id: liveAssistantId,
+        role: "assistant",
+        text: narrateTurnStart(trimmed),
+        referenceImageIds: [],
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, liveAssistant]);
+
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -488,6 +497,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               event.stage !== "cancelled" &&
               event.stage !== "idle",
           }));
+          const line = narrateWorkflowEvent(event);
+          if (line) {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === liveAssistantId
+                  ? {
+                      ...message,
+                      text: appendNarration(message.text, line),
+                    }
+                  : message,
+              ),
+            );
+          }
         },
       });
 
@@ -510,14 +532,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setVisualReview(result.data.visualReview);
           publishRender(result.data.finalRender);
 
-          const assistantMessage: ConversationMessage = {
-            id: createId("message"),
-            role: "assistant",
-            text: result.data.assistantMessage,
-            referenceImageIds: [],
-            createdAt: new Date().toISOString(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === liveAssistantId
+                ? {
+                    ...message,
+                    text: narrateTurnSuccess({
+                      liveText: message.text,
+                      title: result.data.document.meta.title,
+                      reviewIterations: result.data.reviewIterations,
+                    }),
+                  }
+                : message,
+            ),
+          );
           setTurn({
             running: false,
             stage: "ready",
@@ -544,6 +572,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               createdAt: new Date().toISOString(),
             },
           ]);
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === liveAssistantId
+                ? {
+                    ...message,
+                    text: narrateTurnFailure(
+                      message.text,
+                      STAGE_LABELS.cancelled,
+                    ),
+                  }
+                : message,
+            ),
+          );
           setTurn({ running: false, stage: "cancelled", reviewIteration: 0 });
         } else {
           setWorkflowEvents((prev) => [
@@ -555,6 +596,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               createdAt: new Date().toISOString(),
             },
           ]);
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === liveAssistantId
+                ? {
+                    ...message,
+                    text: narrateTurnFailure(
+                      message.text,
+                      error.message.slice(0, 300) || STAGE_LABELS.failed,
+                    ),
+                  }
+                : message,
+            ),
+          );
           setTurn({ running: false, stage: "failed", reviewIteration: 0 });
         }
       } catch (error) {
@@ -569,6 +623,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             createdAt: new Date().toISOString(),
           },
         ]);
+        setMessages((prev) =>
+          prev.map((item) =>
+            item.id === liveAssistantId
+              ? {
+                  ...item,
+                  text: narrateTurnFailure(item.text, message.slice(0, 300)),
+                }
+              : item,
+          ),
+        );
         setTurn({ running: false, stage: "failed", reviewIteration: 0 });
       } finally {
         abortRef.current = null;
@@ -738,6 +802,44 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await loadWorkspace();
+      if (cancelled || !stored) {
+        hydratedRef.current = true;
+        return;
+      }
+
+      for (const snapshot of stored.snapshots) {
+        snapshotsRef.current.set(snapshot.id, snapshot);
+      }
+      setChatHistory(stored.chatHistory);
+      setCloudDisclosureAccepted(stored.cloudDisclosureAccepted);
+
+      const active =
+        stored.snapshots.find((item) => item.id === stored.activeChatId) ??
+        stored.snapshots[0];
+      if (active) {
+        setDocument(active.document);
+        setMessages(active.messages);
+        setReferenceImages(active.referenceImages);
+        setCheckpoints(active.checkpoints);
+        setWorkflowEvents(active.workflowEvents);
+        setValidation(active.validation);
+        setVisualReview(active.visualReview);
+        publishRender(null);
+        setPreviewOpen(false);
+        setTurn({ running: false, stage: "idle", reviewIteration: 0 });
+      }
+      hydratedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publishRender]);
+
+  useEffect(() => {
     setChatHistory((prev) =>
       upsertHistory(prev, {
         id: document.documentId,
@@ -747,6 +849,48 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }),
     );
   }, [document, messages]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+
+    const current: ChatSnapshot = {
+      id: document.documentId,
+      title: chatTitleFrom(document, messages),
+      updatedAt: new Date().toISOString(),
+      document,
+      messages,
+      referenceImages,
+      checkpoints,
+      workflowEvents,
+      validation,
+      visualReview,
+    };
+    snapshotsRef.current.set(current.id, current);
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void saveWorkspace({
+        activeChatId: document.documentId,
+        chatHistory,
+        snapshots: Array.from(snapshotsRef.current.values()),
+        cloudDisclosureAccepted,
+      });
+    }, 400);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [
+    document,
+    messages,
+    referenceImages,
+    checkpoints,
+    workflowEvents,
+    validation,
+    visualReview,
+    chatHistory,
+    cloudDisclosureAccepted,
+  ]);
 
   const activeChatId = document.documentId;
 
