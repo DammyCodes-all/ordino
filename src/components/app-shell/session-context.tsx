@@ -157,8 +157,7 @@ function upsertHistory(
 ): ChatHistoryEntry[] {
   const without = prev.filter((item) => item.id !== entry.id);
   return [entry, ...without].sort(
-    (a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
   );
 }
 

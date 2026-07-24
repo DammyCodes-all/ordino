@@ -1,6 +1,10 @@
 "use client";
 
-import { Alert02Icon, CloudIcon, SidebarRightIcon } from "@hugeicons/core-free-icons";
+import {
+  Alert02Icon,
+  CloudIcon,
+  SidebarRightIcon,
+} from "@hugeicons/core-free-icons";
 import { useSession } from "@/components/app-shell/session-context";
 import { AppIcon } from "@/components/ui/app-icon";
 
