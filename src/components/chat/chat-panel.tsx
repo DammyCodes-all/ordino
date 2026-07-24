@@ -192,8 +192,8 @@ export function ChatPanel() {
             {turn.running && agentNarration ? (
               <article className="animate-fade-up mr-2">
                 <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-accent animate-pulse-soft" />
-                  Ordino
+                  <span className="inline-block size-3 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                  Ordino · working
                 </p>
                 <div className="rounded-3xl bg-surface/70 px-5 py-4 text-base leading-relaxed text-foreground/95">
                   {agentNarration.split("\n").filter(Boolean).map((step, i) => (
