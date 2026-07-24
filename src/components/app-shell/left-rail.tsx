@@ -67,10 +67,6 @@ export function LeftRail() {
             or
           </span>
         </div>
-        <span
-          className={`size-2.5 rounded-full ${statusTone}`}
-          title="Session status"
-        />
       </div>
 
       <nav className="flex flex-1 flex-col items-center gap-3">

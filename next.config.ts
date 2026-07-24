@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  serverExternalPackages: ["canvas", "pdfjs-dist"],
+  serverExternalPackages: ["@napi-rs/canvas", "canvas", "pdfjs-dist"],
 };
 
 export default nextConfig;
