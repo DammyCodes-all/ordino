@@ -18,7 +18,8 @@ import { GoogleAIClient, createSuccessResult, createErrorResult, mapErrorToAppEr
 import { planDocument } from "./planner";
 import { ToolExecutor } from "./tool-executor";
 import { runVisualReview } from "@/review";
-import { buildRevisionPrompt, prepareReviewCheckpoint } from "@/review/revision-context";
+import { prepareReviewCheckpoint } from "@/review/revision-context";
+import { runWriterLoop, runRevisionLoop } from "./writer";
 
 export class AgentOrchestrator implements AgentPort {
   private client: GoogleAIClient;
@@ -62,6 +63,7 @@ export class AgentOrchestrator implements AgentPort {
       this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
       const isInitialGen = currentDoc.nodes.length === 0;
+      let documentPlan: import("@/contracts").DocumentPlan | null = null;
 
       // 1. Planning (if initial generation)
       if (isInitialGen) {
@@ -75,6 +77,7 @@ export class AgentOrchestrator implements AgentPort {
             { recovery: { document: currentDoc, createdCheckpoints, lastValidRender } },
           ) as any;
         }
+        documentPlan = planRes.data;
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
       } else {
         // Create user_turn checkpoint before first follow-up mutation
@@ -87,33 +90,29 @@ export class AgentOrchestrator implements AgentPort {
 
       // 2. Generating (Writer loop)
       this.emit("generating", "Generating document content");
-      // Simulated writer execution adding initial heading and paragraph if empty
       const toolExec = new ToolExecutor(this.dependencies.document);
 
-      if (currentDoc.nodes.length === 0) {
-        const addHeadRes = toolExec.addNode(currentDoc, {
-          node: {
-            type: "heading",
-            level: 1,
-            text: input.document.meta.title || "Untitled Document",
-          },
-          position: { kind: "end" },
-        });
-        if (addHeadRes.result.success) {
-          currentDoc = addHeadRes.updatedDoc;
-        }
+      const writerResult = await runWriterLoop(
+        this.client,
+        currentDoc,
+        documentPlan ?? {
+          summary: "Continue writing the document.",
+          sections: [{ heading: "Content", purpose: "Continue existing content", estimatedParagraphs: 1, includeTable: false, includeList: false }],
+        },
+        toolExec,
+        input.userMessage,
+        input.signal,
+      );
 
-        const addParaRes = toolExec.addNode(currentDoc, {
-          node: {
-            type: "paragraph",
-            text: "This document content was generated based on your prompt.",
-          },
-          position: { kind: "end" },
-        });
-        if (addParaRes.result.success) {
-          currentDoc = addParaRes.updatedDoc;
-        }
+      if (!writerResult.success) {
+        return createErrorResult(
+          writerResult.error.code,
+          writerResult.error.message,
+          writerResult.error.retryable,
+          { recovery: { document: currentDoc, createdCheckpoints, lastValidRender } },
+        ) as any;
       }
+      currentDoc = writerResult.data.document;
 
       this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
 
@@ -200,7 +199,17 @@ export class AgentOrchestrator implements AgentPort {
           currentDoc = prep.nextDocument;
         }
 
-        // Apply any required revisions through toolExecutor...
+        const revisionResult = await runRevisionLoop(
+          this.client,
+          currentDoc,
+          finalValidation.issues,
+          finalVisualReview?.issues ?? [],
+          toolExec,
+          input.signal,
+        );
+        if (revisionResult.success) {
+          currentDoc = revisionResult.data.document;
+        }
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
       }
 
