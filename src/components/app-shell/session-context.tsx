@@ -51,6 +51,26 @@ const STAGE_LABELS: Record<WorkflowStage, string> = {
   cancelled: "Cancelled",
 };
 
+export type ChatHistoryEntry = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  snippet: string;
+};
+
+type ChatSnapshot = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  document: DocumentState;
+  messages: ConversationMessage[];
+  referenceImages: ReferenceImage[];
+  checkpoints: DocumentCheckpoint[];
+  workflowEvents: WorkflowEvent[];
+  validation: ValidationReport | null;
+  visualReview: VisualReviewResult | null;
+};
+
 type SessionContextValue = {
   document: DocumentState;
   messages: ConversationMessage[];
@@ -72,6 +92,8 @@ type SessionContextValue = {
   generationBlocked: boolean;
   stageLabel: string;
   actionsDisabled: boolean;
+  chatHistory: ChatHistoryEntry[];
+  activeChatId: string;
   setPreviewOpen: (open: boolean) => void;
   setDisclosureOpen: (open: boolean) => void;
   setDiagnosticsOpen: (open: boolean) => void;
@@ -83,8 +105,62 @@ type SessionContextValue = {
   addReference: (file: File) => Promise<void>;
   removeReference: (id: ReferenceImage["id"]) => void;
   newDocument: () => void;
+  selectChat: (id: string) => void;
   refreshHealth: () => Promise<void>;
 };
+
+function createBlankDocument() {
+  return createDocument({
+    title: "Untitled document",
+    documentType: "Document",
+    audience: "General",
+    writingStyle: "professional",
+    instructions: null,
+    pageLimit: null,
+  });
+}
+
+function chatTitleFrom(
+  document: DocumentState,
+  messages: ConversationMessage[],
+) {
+  const firstUser = messages.find((message) => message.role === "user");
+  if (firstUser) {
+    const text = firstUser.text.trim();
+    return text.length > 42 ? `${text.slice(0, 42)}…` : text;
+  }
+  if (document.meta.title && document.meta.title !== "Untitled document") {
+    return document.meta.title;
+  }
+  return "Untitled chat";
+}
+
+function chatSnippetFrom(messages: ConversationMessage[]) {
+  const last = messages.at(-1);
+  if (!last) return "";
+  const text = last.text.trim();
+  return text.length > 56 ? `${text.slice(0, 56)}…` : text;
+}
+
+function entryFromSnapshot(snapshot: ChatSnapshot): ChatHistoryEntry {
+  return {
+    id: snapshot.id,
+    title: snapshot.title,
+    updatedAt: snapshot.updatedAt,
+    snippet: chatSnippetFrom(snapshot.messages),
+  };
+}
+
+function upsertHistory(
+  prev: ChatHistoryEntry[],
+  entry: ChatHistoryEntry,
+): ChatHistoryEntry[] {
+  const without = prev.filter((item) => item.id !== entry.id);
+  return [entry, ...without].sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+}
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
@@ -107,20 +183,33 @@ function reviewIterationFromMessage(message: string): 0 | 1 | 2 | 3 | null {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [document, setDocument] = useState<DocumentState>(() =>
-    createDocument({
-      title: "Untitled document",
-      documentType: "Document",
-      audience: "General",
-      writingStyle: "professional",
-      instructions: null,
-      pageLimit: null,
-    }),
-  );
+  const initialRef = useRef<{
+    document: DocumentState;
+    chatHistory: ChatHistoryEntry[];
+  } | null>(null);
+  if (!initialRef.current) {
+    const blank = createBlankDocument();
+    initialRef.current = {
+      document: blank,
+      chatHistory: [
+        {
+          id: blank.documentId,
+          title: "Untitled chat",
+          updatedAt: new Date().toISOString(),
+          snippet: "",
+        },
+      ],
+    };
+  }
+
+  const [document, setDocument] = useState(initialRef.current.document);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [checkpoints, setCheckpoints] = useState<DocumentCheckpoint[]>([]);
   const [workflowEvents, setWorkflowEvents] = useState<WorkflowEvent[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>(
+    initialRef.current.chatHistory,
+  );
   const [turn, setTurn] = useState<AgentTurnState>({
     running: false,
     stage: "idle",
@@ -177,14 +266,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const documentRef = useRef(document);
   const messagesRef = useRef(messages);
   const referenceImagesRef = useRef(referenceImages);
+  const checkpointsRef = useRef(checkpoints);
+  const workflowEventsRef = useRef(workflowEvents);
+  const validationRef = useRef(validation);
+  const visualReviewRef = useRef(visualReview);
   const previewUrlRef = useRef<string | null>(null);
   const publishedRenderRef = useRef<InternalRenderResult | null>(null);
+  const snapshotsRef = useRef(new Map<string, ChatSnapshot>());
   const pdfPort = useMemo(() => createSessionPdfPort(), []);
   const documentPort = useMemo(() => createSessionDocumentPort(), []);
 
   documentRef.current = document;
   messagesRef.current = messages;
   referenceImagesRef.current = referenceImages;
+  checkpointsRef.current = checkpoints;
+  workflowEventsRef.current = workflowEvents;
+  validationRef.current = validation;
+  visualReviewRef.current = visualReview;
   publishedRenderRef.current = publishedRender;
 
   const revokePreviewUrl = useCallback(() => {
@@ -548,33 +646,108 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [actionsDisabled],
   );
 
+  const archiveCurrent = useCallback(() => {
+    const current = documentRef.current;
+    const currentMessages = messagesRef.current;
+    const snapshot: ChatSnapshot = {
+      id: current.documentId,
+      title: chatTitleFrom(current, currentMessages),
+      updatedAt: new Date().toISOString(),
+      document: current,
+      messages: currentMessages,
+      referenceImages: referenceImagesRef.current,
+      checkpoints: checkpointsRef.current,
+      workflowEvents: workflowEventsRef.current,
+      validation: validationRef.current,
+      visualReview: visualReviewRef.current,
+    };
+    snapshotsRef.current.set(snapshot.id, snapshot);
+    setChatHistory((prev) => upsertHistory(prev, entryFromSnapshot(snapshot)));
+    return snapshot;
+  }, []);
+
+  const resetLiveSession = useCallback(
+    (nextDocument: DocumentState) => {
+      abortRef.current?.abort();
+      setDocument(nextDocument);
+      setMessages([]);
+      setReferenceImages([]);
+      setCheckpoints([]);
+      setWorkflowEvents([]);
+      setValidation(null);
+      setVisualReview(null);
+      publishRender(null);
+      setPreviewOpen(false);
+      setTurn({ running: false, stage: "idle", reviewIteration: 0 });
+    },
+    [publishRender],
+  );
+
   const newDocument = useCallback(() => {
     if (actionsDisabled) return;
-    const confirmed = window.confirm(
-      "Start a new document? The current session will be cleared.",
-    );
-    if (!confirmed) return;
-    abortRef.current?.abort();
-    setDocument(
-      createDocument({
-        title: "Untitled document",
-        documentType: "Document",
-        audience: "General",
-        writingStyle: "professional",
-        instructions: null,
-        pageLimit: null,
+    const hasContent = messagesRef.current.length > 0;
+    if (hasContent) {
+      const confirmed = window.confirm(
+        "Start a new chat? Your current chat will be saved in history.",
+      );
+      if (!confirmed) return;
+      archiveCurrent();
+    }
+
+    const next = createBlankDocument();
+    resetLiveSession(next);
+    setChatHistory((prev) =>
+      upsertHistory(prev, {
+        id: next.documentId,
+        title: "Untitled chat",
+        updatedAt: new Date().toISOString(),
+        snippet: "",
       }),
     );
-    setMessages([]);
-    setReferenceImages([]);
-    setCheckpoints([]);
-    setWorkflowEvents([]);
-    setValidation(null);
-    setVisualReview(null);
-    publishRender(null);
-    setPreviewOpen(false);
-    setTurn({ running: false, stage: "idle", reviewIteration: 0 });
-  }, [actionsDisabled, publishRender]);
+  }, [actionsDisabled, archiveCurrent, resetLiveSession]);
+
+  const selectChat = useCallback(
+    (id: string) => {
+      if (actionsDisabled) return;
+      if (id === documentRef.current.documentId) return;
+
+      const snapshot = snapshotsRef.current.get(id);
+      if (!snapshot) return;
+
+      archiveCurrent();
+      abortRef.current?.abort();
+      setDocument(snapshot.document);
+      setMessages(snapshot.messages);
+      setReferenceImages(snapshot.referenceImages);
+      setCheckpoints(snapshot.checkpoints);
+      setWorkflowEvents(snapshot.workflowEvents);
+      setValidation(snapshot.validation);
+      setVisualReview(snapshot.visualReview);
+      publishRender(null);
+      setPreviewOpen(false);
+      setTurn({ running: false, stage: "idle", reviewIteration: 0 });
+      setChatHistory((prev) =>
+        upsertHistory(prev, {
+          ...entryFromSnapshot(snapshot),
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    },
+    [actionsDisabled, archiveCurrent, publishRender],
+  );
+
+  useEffect(() => {
+    setChatHistory((prev) =>
+      upsertHistory(prev, {
+        id: document.documentId,
+        title: chatTitleFrom(document, messages),
+        updatedAt: new Date().toISOString(),
+        snippet: chatSnippetFrom(messages),
+      }),
+    );
+  }, [document, messages]);
+
+  const activeChatId = document.documentId;
 
   const value = useMemo<SessionContextValue>(
     () => ({
@@ -598,6 +771,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       generationBlocked,
       stageLabel,
       actionsDisabled,
+      chatHistory,
+      activeChatId,
       setPreviewOpen,
       setDisclosureOpen,
       setDiagnosticsOpen,
@@ -609,6 +784,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       addReference,
       removeReference,
       newDocument,
+      selectChat,
       refreshHealth,
     }),
     [
@@ -632,6 +808,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       generationBlocked,
       stageLabel,
       actionsDisabled,
+      chatHistory,
+      activeChatId,
       acceptDisclosure,
       sendPrompt,
       cancelTurn,
@@ -640,6 +818,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       addReference,
       removeReference,
       newDocument,
+      selectChat,
       refreshHealth,
     ],
   );

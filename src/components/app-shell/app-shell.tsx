@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChatHistorySidebar } from "@/components/app-shell/chat-history-sidebar";
 import { LeftRail } from "@/components/app-shell/left-rail";
 import { SessionProvider } from "@/components/app-shell/session-context";
 import { ChatPanel } from "@/components/chat/chat-panel";
@@ -8,9 +10,18 @@ import { DiagnosticsStrip } from "@/components/diagnostics/diagnostics-strip";
 import { PreviewSidebar } from "@/components/pdf-preview/preview-sidebar";
 
 function ShellLayout() {
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   return (
     <div className="relative flex h-dvh overflow-hidden bg-transparent">
-      <LeftRail />
+      <div
+        className="relative z-30 ml-5 mt-5 mb-5 flex shrink-0 items-stretch"
+        onMouseEnter={() => setHistoryOpen(true)}
+        onMouseLeave={() => setHistoryOpen(false)}
+      >
+        <LeftRail />
+        <ChatHistorySidebar open={historyOpen} />
+      </div>
       <div className="relative flex min-w-0 flex-1 flex-row overflow-hidden">
         <ChatPanel />
         <DiagnosticsStrip />
