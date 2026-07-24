@@ -16,7 +16,6 @@ import {
   requestAudioPermission,
   speakLongText,
   speechRecognitionSupported,
-  speechSynthesisSupported,
   stopSpeaking,
   unlockMediaPlayback,
 } from "@/lib/speech";
