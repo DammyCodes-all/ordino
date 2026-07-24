@@ -128,7 +128,6 @@ export async function runStartupDiagnostics(
     "authentication",
     "google_ai_service",
     "model",
-    "vision",
   ]);
   const ready = checks
     .filter((item) => blocking.has(item.name))
