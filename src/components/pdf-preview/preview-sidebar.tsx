@@ -1,10 +1,15 @@
 "use client";
 
-import { Cancel01Icon, FileExportIcon } from "@hugeicons/core-free-icons";
+import {
+  AiScanIcon,
+  Cancel01Icon,
+  FileExportIcon,
+} from "@hugeicons/core-free-icons";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "@/components/app-shell/session-context";
+import { usePdfAnalysis } from "@/components/pdf-analysis/pdf-analysis-context";
 import { PdfPreview } from "@/components/pdf-preview/pdf-preview";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -14,11 +19,16 @@ export function PreviewSidebar() {
   const {
     previewOpen,
     publishedPreview,
+    publishedRender,
     setPreviewOpen,
     document: sessionDocument,
+    outline,
     turn,
     exportPdf,
+    cloudDisclosureAccepted,
+    setDisclosureOpen,
   } = useSession();
+  const { startFromGenerated } = usePdfAnalysis();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -82,6 +92,26 @@ export function PreviewSidebar() {
                     {turn.running ? " · previous version while revising" : ""}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  disabled={turn.running || !publishedRender}
+                  onClick={() => {
+                    if (!publishedRender) return;
+                    if (!cloudDisclosureAccepted) {
+                      setDisclosureOpen(true);
+                      return;
+                    }
+                    void startFromGenerated(
+                      sessionDocument,
+                      publishedRender,
+                      outline,
+                    );
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm text-foreground backdrop-blur-md transition-colors hover:bg-white/15 disabled:opacity-35"
+                >
+                  <AppIcon icon={AiScanIcon} size={16} />
+                  Analyze
+                </button>
                 <button
                   type="button"
                   disabled={turn.running}
