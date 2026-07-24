@@ -62,7 +62,6 @@ describe("shared contracts", () => {
       provider: "google-ai-studio",
       modelId: "gemini-2.5-flash",
       transportRetries: 2,
-      routeBaseUrl: "/api/ai",
     });
 
     expect(result.success).toBe(true);

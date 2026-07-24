@@ -3,8 +3,11 @@ import type { ModelDiagnosticPort } from "./google-ai";
 import type { AppResult } from "./result";
 
 export const diagnosticNameSchema = z.enum([
-  "google_ai",
   "api_key",
+  "authentication",
+  "rate_limit",
+  "internet",
+  "google_ai_service",
   "model",
   "vision",
   "pdf_renderer",
