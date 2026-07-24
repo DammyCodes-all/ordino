@@ -1,17 +1,45 @@
 "use client";
 
 import type { NarrationPlaylist, NarrationSegment } from "@/contracts";
-import { unlockSpeech, waitForVoices } from "@/lib/speech";
+import {
+  speakText,
+  stopSpeaking,
+  unlockSpeech,
+  waitForVoices,
+} from "@/lib/speech";
 
 export type NarrationStatus = "idle" | "playing" | "paused" | "unavailable";
+
+function normalizeLang(language: string | null | undefined) {
+  const raw = (language || "en-US").trim();
+  if (!raw) return "en-US";
+  if (raw.length === 2) {
+    const map: Record<string, string> = {
+      en: "en-US",
+      es: "es-ES",
+      fr: "fr-FR",
+      de: "de-DE",
+      pt: "pt-BR",
+      it: "it-IT",
+      ha: "ha-NG",
+      yo: "yo-NG",
+      ig: "ig-NG",
+    };
+    return map[raw.toLowerCase()] ?? `${raw}-${raw.toUpperCase()}`;
+  }
+  return raw;
+}
 
 export class BrowserNarrationPlayer {
   private queue: NarrationSegment[] = [];
   private index = 0;
   private status: NarrationStatus = "idle";
-  private language = "en";
+  private language = "en-US";
   private onStatus: ((status: NarrationStatus) => void) | null = null;
-  private keepalive: ReturnType<typeof setInterval> | null = null;
+  private runToken = 0;
+  private paused = false;
+  private pauseGate: Promise<void> | null = null;
+  private resumePause: (() => void) | null = null;
 
   constructor(onStatus?: (status: NarrationStatus) => void) {
     this.onStatus = onStatus ?? null;
@@ -26,20 +54,9 @@ export class BrowserNarrationPlayer {
     this.onStatus?.(status);
   }
 
-  private clearKeepalive() {
-    if (this.keepalive) {
-      clearInterval(this.keepalive);
-      this.keepalive = null;
-    }
-  }
-
-  private startKeepalive() {
-    this.clearKeepalive();
-    this.keepalive = setInterval(() => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.resume();
-      }
-    }, 5_000);
+  /** Call from a click handler before play() when possible. */
+  prepareFromUserGesture() {
+    unlockSpeech();
   }
 
   play(playlist: NarrationPlaylist, fromHighlightId?: string | null) {
@@ -49,8 +66,15 @@ export class BrowserNarrationPlayer {
     }
 
     unlockSpeech();
-    window.speechSynthesis.cancel();
-    this.queue = [...playlist.segments].sort((a, b) => a.order - b.order);
+    stopSpeaking();
+    this.paused = false;
+    this.resumePause?.();
+    this.resumePause = null;
+    this.pauseGate = null;
+
+    this.queue = [...playlist.segments]
+      .filter((segment) => segment.text.trim().length > 0)
+      .sort((a, b) => a.order - b.order);
     if (fromHighlightId) {
       const start = this.queue.findIndex(
         (segment) => segment.highlightId === fromHighlightId,
@@ -58,76 +82,89 @@ export class BrowserNarrationPlayer {
       if (start >= 0) this.queue = this.queue.slice(start);
     }
     this.index = 0;
-    this.language = playlist.language || "en";
+    this.language = normalizeLang(playlist.language);
     if (this.queue.length === 0) {
       this.setStatus("idle");
       return;
     }
 
-    void waitForVoices().then(() => {
-      this.startKeepalive();
-      this.speakNext(this.language);
-    });
+    const token = ++this.runToken;
+    this.setStatus("playing");
+    void this.run(token);
   }
 
-  private speakNext(language: string) {
-    if (!this.available) {
-      this.clearKeepalive();
-      this.setStatus("unavailable");
-      return;
+  private async waitIfPaused() {
+    while (this.paused) {
+      this.pauseGate = new Promise<void>((resolve) => {
+        this.resumePause = resolve;
+      });
+      await this.pauseGate;
     }
-    const segment = this.queue[this.index];
-    if (!segment) {
-      this.clearKeepalive();
-      this.setStatus("idle");
-      return;
-    }
+  }
 
-    const utterance = new SpeechSynthesisUtterance(segment.text);
-    utterance.lang = language;
-    utterance.volume = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const lower = language.toLowerCase();
-    const match =
-      voices.find((voice) => voice.lang.toLowerCase().startsWith(lower)) ??
-      voices.find((voice) =>
-        voice.lang.toLowerCase().startsWith(lower.slice(0, 2)),
-      );
-    if (match) utterance.voice = match;
+  private async run(token: number) {
+    try {
+      await waitForVoices();
+      if (token !== this.runToken) return;
 
-    utterance.onend = () => {
-      this.index += 1;
-      this.speakNext(language);
-    };
-    utterance.onerror = (event) => {
-      const error = (event as SpeechSynthesisErrorEvent).error;
-      if (error === "canceled" || error === "interrupted") {
-        return;
+      while (this.index < this.queue.length) {
+        if (token !== this.runToken) return;
+        await this.waitIfPaused();
+        if (token !== this.runToken) return;
+
+        const segment = this.queue[this.index];
+        if (!segment) break;
+
+        try {
+          await speakText(segment.text, { lang: this.language });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          // Skip bad segment; keep going rather than marking whole player dead.
+          console.warn("Narration segment failed", error);
+        }
+
+        if (token !== this.runToken) return;
+        this.index += 1;
       }
-      this.clearKeepalive();
+
+      if (token === this.runToken) {
+        this.setStatus("idle");
+        this.queue = [];
+        this.index = 0;
+      }
+    } catch (error) {
+      if (token !== this.runToken) return;
+      console.warn("Narration unavailable", error);
       this.setStatus("unavailable");
-    };
-    this.setStatus("playing");
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(utterance);
+    }
   }
 
   pause() {
-    if (!this.available) return;
+    if (!this.available || this.status !== "playing") return;
+    this.paused = true;
     window.speechSynthesis.pause();
     this.setStatus("paused");
   }
 
   resume() {
     if (!this.available) return;
+    this.paused = false;
+    this.resumePause?.();
+    this.resumePause = null;
+    this.pauseGate = null;
     window.speechSynthesis.resume();
-    this.setStatus("playing");
+    if (this.status === "paused") this.setStatus("playing");
   }
 
   stop() {
-    if (!this.available) return;
-    this.clearKeepalive();
-    window.speechSynthesis.cancel();
+    this.runToken += 1;
+    this.paused = false;
+    this.resumePause?.();
+    this.resumePause = null;
+    this.pauseGate = null;
+    stopSpeaking();
     this.queue = [];
     this.index = 0;
     this.setStatus("idle");

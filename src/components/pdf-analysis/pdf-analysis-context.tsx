@@ -209,6 +209,7 @@ export function PdfAnalysisProvider({ children }: { children: ReactNode }) {
   const playNarration = useCallback(
     (highlightId?: string | null) => {
       if (!narration) return;
+      playerRef.current?.prepareFromUserGesture();
       playerRef.current?.play(narration, highlightId);
     },
     [narration],
