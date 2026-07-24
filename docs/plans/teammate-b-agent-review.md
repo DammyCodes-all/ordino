@@ -1,8 +1,8 @@
-# Teammate B Plan — AI Orchestration, Ollama, and Review Loop
+# Teammate B Plan — AI Orchestration, Google AI Studio, and Review Loop
 
 ## Mission
 
-Own all model-facing behavior: direct browser-to-Ollama communication, structured planning, six document tools, prompt rebuilding, visual review, revision, retries, cancellation, and the three-pass orchestration loop.
+Own all model-facing behavior: browser orchestration through same-origin Next.js AI route handlers, cloud-only Google AI Studio requests via AI SDK 7 and `@ai-sdk/google`, structured planning, six document tools, prompt rebuilding, visual review, revision, retries, cancellation, and the three-pass orchestration loop.
 
 Read `docs/collaboration-contracts.md` first. Its contracts are authoritative.
 
@@ -10,14 +10,15 @@ Read `docs/collaboration-contracts.md` first. Its contracts are authoritative.
 
 ```text
 src/agent/**
-src/ollama/**
+src/google-ai/**
 src/review/**
+src/app/api/ai/**
 ```
 
 Do not edit:
 
 ```text
-src/app/**
+src/app/** except src/app/api/ai/**
 src/components/**
 src/document/**
 src/pdf/**
@@ -33,14 +34,19 @@ Request shared contract or dependency changes through the integrator rather than
 ## Required directory shape
 
 ```text
-src/ollama/
+src/google-ai/
 ├── configuration.ts
-├── ollama-client.ts
+├── google-ai-client.ts
 ├── model-port.ts
 ├── structured-output.ts
 ├── errors.ts
 ├── index.ts
 └── __tests__/
+
+src/app/api/ai/
+├── generate/route.ts
+├── diagnostics/route.ts
+└── ...
 
 src/agent/
 ├── prompts/
@@ -67,21 +73,24 @@ src/review/
 └── __tests__/
 ```
 
-## Work package B1 — Direct Ollama gateway
+## Work package B1 — Google AI Studio server gateway
 
-Implement a browser-safe model adapter using the configured Ollama base URL and model ID.
+Implement B-owned same-origin Next.js route handlers under `src/app/api/ai/**`. Only these server handlers call Google AI Studio, using AI SDK 7 and `@ai-sdk/google` with the configured model ID.
 
 Requirements:
 
-- No Next.js route handlers, server actions, Node-only APIs, or secret keys.
-- Accept `AbortSignal` for every request.
-- Configure AI SDK transport retries to two.
-- Convert transport and model errors to shared `AppResult` errors.
+- Read `GOOGLE_GENERATIVE_AI_API_KEY` only in server code. Never use a `NEXT_PUBLIC_` key, serialize it into responses, accept it from the browser, or import secret-reading modules into client bundles.
+- The browser-facing `AgentPort` may orchestrate model steps by calling the same-origin AI routes; it must not call Google directly.
+- Keep document state, local PDF rendering, and IndexedDB persistence in the browser. Route handlers are stateless model gateways, not document stores.
+- Accept and propagate cancellation for every request where the runtime permits it.
+- Configure AI SDK transport retries from `GoogleAIConfiguration.transportRetries`, locked to two for v1.
+- Convert missing-key, authentication, rate-limit, internet, Google service, configured-model, vision-capability, transport, and invalid-output failures to shared `AppResult` errors without leaking provider response bodies or secrets.
 - Keep model ID configurable rather than hardcoded in prompts.
-- Support both text and image inputs through the same model configuration.
-- Never log base64 reference or rendered-page images.
+- Support both text and image inputs through the same configuration.
+- Never log prompts, base64 reference images, rasterized-page images, authorization material, or provider payloads.
+- Validate request bodies and cap accepted payload sizes at the route boundary.
 
-Verify the chosen AI SDK Ollama provider can run in the browser during Gate 0. If it cannot, use Ollama's local HTTP API behind B's internal model adapter; do not invent an undefined shared `ModelPort` or introduce a backend.
+Gate 0 must prove browser → same-origin Next route → Google AI Studio text and vision requests, and must inspect the client bundle to confirm that `GOOGLE_GENERATIVE_AI_API_KEY` is absent.
 
 ## Work package B2 — Structured output validation and repair
 
@@ -120,6 +129,8 @@ Reference images are included only when:
 
 Rendered PDF pages are used only by the vision reviewer and never mixed with reference images.
 
+Prompts, relevant reference images, and rasterized PDF pages cross the local/browser boundary through B's same-origin routes and are sent to Google AI Studio for processing. Document/PDF generation and IndexedDB data otherwise remain local. B must expose enough request-state information for C to present an explicit cloud-transfer disclosure and internet-required messaging; no request may contain the API key from the browser.
+
 ## Work package B4 — Structured planner
 
 Implement:
@@ -151,7 +162,7 @@ Tool inputs use shared Zod schemas. Tool implementations delegate to the injecte
 
 Never let both a closure and the UI own independently mutable document copies. The local turn document is returned as `AgentTurnOutput.document` and only then becomes C's session state.
 
-Every tool result uses `AppResult`. Failed tool calls are returned to Gemma during the active loop so it can recover from bad IDs or arguments.
+Every tool result uses `AppResult`. Failed tool calls are returned to the configured Google AI Studio model during the active loop so it can recover from bad IDs or arguments.
 
 `finalizeDocument` ends the current tool loop but does not generate or cache a PDF.
 
@@ -202,7 +213,8 @@ Initial generation:
 
 ```text
 emit planning
-→ plan
+→ send prompt/relevant references through same-origin route
+→ Google AI Studio plan
 → emit generating
 → writer tool loop
 → emit rendering
@@ -210,9 +222,10 @@ emit planning
 → emit validating
 → structural and PDF validation
 → emit rasterizing
-→ rasterize every page
+→ rasterize every page locally
 → emit reviewing
-→ read-only visual review
+→ send rasterized pages through same-origin route
+→ Google AI Studio read-only visual review
 ```
 
 Revision behavior:
@@ -247,6 +260,12 @@ On cancellation:
 
 Fallbacks:
 
+- Missing API key: fail with server-configuration remediation and never ask the browser to supply a key.
+- Authentication failure: fail with server-key remediation.
+- Rate limit: return a retryable typed failure with safe retry guidance.
+- Internet or Google service unavailable: show internet-required/service-unavailable messaging and preserve local work.
+- Configured model unavailable: identify the configured `modelId` without leaking provider payloads.
+- Vision unavailable: preserve the current valid render and allow local export.
 - Planning failure: return error for UI Retry.
 - Partial generation failure: preserve meaningful valid nodes.
 - Vision failure: return current valid render and `visualReview: null`.
@@ -278,6 +297,9 @@ Use canned plans, tool calls, rendered pages, and visual reviews so orchestratio
 - A failed vision call still returns the current valid render.
 - Cancellation prevents later model/tool steps.
 - Workflow events contain stages, not chain-of-thought.
+- Browser requests are same-origin, and neither client bundles nor browser payloads contain `GOOGLE_GENERATIVE_AI_API_KEY`.
+- Missing-key, authentication, rate-limit, internet, service, model, and vision failures map to distinct actionable errors.
+- Prompts, relevant reference images, and rasterized review pages are treated as disclosed cloud-transferred data.
 
 ## Required public barrel
 
@@ -286,11 +308,11 @@ Expose from `src/agent/index.ts`:
 ```ts
 createAgent(
   dependencies: AgentRuntimeDependencies,
-  configuration: OllamaConfiguration,
+  configuration: GoogleAIConfiguration,
 ): AgentPort
 ```
 
-Expose `createModelDiagnosticPort(configuration): ModelDiagnosticPort` from `src/ollama/index.ts`, plus only the configuration APIs needed by composition. Expose from `src/review/index.ts` only review normalization/testing helpers needed outside the module.
+Expose `createModelDiagnosticPort(configuration): ModelDiagnosticPort` from `src/google-ai/index.ts`, plus only the `GoogleAIConfiguration` APIs needed by composition. The configuration is exactly `{ provider: "google-ai-studio", modelId, transportRetries }`; it never contains the API key. Expose from `src/review/index.ts` only review normalization/testing helpers needed outside the module.
 
 ## Handoff to integration
 
@@ -298,9 +320,9 @@ Provide Teammate C with:
 
 - `createAgent`
 - Typed success and recovery-error behavior
-- Ollama configuration builder
+- `GoogleAIConfiguration` builder
 - `createModelDiagnosticPort`
-- Model health/warm-up behavior required by diagnostics
+- Missing-key, authentication, rate-limit, internet, Google service, model, vision, and warm-up behavior required by diagnostics
 
 B's fake `AgentPort` remains private to B's tests. C uses its own temporary fake during parallel work.
 

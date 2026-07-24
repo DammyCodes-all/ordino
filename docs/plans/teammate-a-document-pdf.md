@@ -19,7 +19,7 @@ Do not edit:
 src/app/**
 src/components/**
 src/agent/**
-src/ollama/**
+src/google-ai/**
 src/review/**
 src/storage/**
 src/diagnostics/**
@@ -113,7 +113,7 @@ Requirements:
 - Correctly move a node when the target appears before or after its current index.
 - Mark `affectsPagination` true for every content, style, order, addition, and deletion change in v1.
 
-No React state setter, Ollama call, PDF import, or IndexedDB access belongs in the executor.
+No React state setter, Google AI Studio or same-origin AI-route call, PDF import, or IndexedDB access belongs in the executor.
 
 ## Work package A3 — Outline and read behavior
 
@@ -253,6 +253,7 @@ This fixture is the stable input for PDF development before the agent exists.
 - A stale render is not exported.
 - A requested page limit is reported but does not prevent export.
 - No intermediate artifact is persisted by this module.
+- Document mutation, PDF rendering, rasterization, and export remain local. The rasterized pages returned to Teammate B may be sent through same-origin AI routes to Google AI Studio for review; A does not perform that transfer or handle `GOOGLE_GENERATIVE_AI_API_KEY`.
 
 ## Required public barrel
 

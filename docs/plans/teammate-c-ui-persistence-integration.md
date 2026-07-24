@@ -9,7 +9,7 @@ Read `docs/collaboration-contracts.md` first. Its contracts are authoritative.
 ## Exclusive write set
 
 ```text
-src/app/**
+src/app/** except src/app/api/ai/**
 src/components/**
 src/storage/**
 src/diagnostics/**
@@ -30,8 +30,9 @@ Do not edit:
 src/document/**
 src/pdf/**
 src/agent/**
-src/ollama/**
+src/google-ai/**
 src/review/**
+src/app/api/ai/**
 src/contracts/**
 ```
 
@@ -63,7 +64,7 @@ src/diagnostics/
 ├── index.ts
 └── __tests__/
 
-src/app/
+src/app/                 # excludes B-owned src/app/api/ai/**
 ├── layout.tsx
 ├── page.tsx
 ├── globals.css
@@ -77,7 +78,7 @@ This is not part of C's parallel branch. Before launching any of the three codin
 
 Expected dependency categories:
 
-- AI SDK and browser-compatible Ollama provider or adapter dependencies
+- AI SDK 7 and `@ai-sdk/google` for B's server-only Google AI Studio gateway
 - Zod
 - `@react-pdf/renderer`
 - `pdfjs-dist`
@@ -86,9 +87,9 @@ Expected dependency categories:
 
 Use `crypto.randomUUID()` rather than adding UUID solely for browser ID generation.
 
-Configure the app so runtime behavior remains client-side. Do not add API routes or server actions for Ollama.
+Keep document/PDF state, rendering, persistence, and browser orchestration client-side. Teammate B exclusively implements `src/app/api/ai/**`; C must not add or modify AI route handlers or call Google directly.
 
-Document local execution at `http://localhost:3000` and Ollama CORS setup. The app must not depend on a cloud deployment for the demo.
+Document local execution at `http://localhost:3000`, the server-only `GOOGLE_GENERATIVE_AI_API_KEY`, and the requirement for internet access to Google AI Studio. Never use a `NEXT_PUBLIC_` key. A cloud deployment is optional for the demo, but cloud inference is mandatory.
 
 ## Work package C2 — Application state shell
 
@@ -103,6 +104,7 @@ Create one client-side session controller that owns:
 - Current `AbortController`
 - Whether an agent turn is active
 - The pre-turn conversation snapshot used to prevent sending the current message twice
+- Whether the user has acknowledged the explicit Google AI Studio cloud-data-transfer disclosure
 
 React components consume this controller but do not directly mutate document nodes.
 
@@ -145,22 +147,21 @@ Behavior:
 Compose checks for:
 
 - IndexedDB read/write
-- Ollama reachability
+- Server-side `GOOGLE_GENERATIVE_AI_API_KEY` presence through B's safe diagnostic route
+- Internet connectivity and Google AI Studio service availability
+- API-key authentication
+- Rate-limit state when reported
 - Configured model availability
 - Model text warm-up
-- Model image capability
+- Model vision capability
 - PDF renderer smoke render
 - Export pipeline readiness
 
 Show each `DiagnosticCheck` independently. Disable the main chat only when a mandatory check prevents generation.
 
-For CORS/Ollama failures, display actionable setup text such as:
+Show actionable, non-secret remediation for missing server key, authentication failure, rate limiting, internet failure, Google service unavailability, configured-model unavailability, and vision unavailability. Missing-key guidance must name `GOOGLE_GENERATIVE_AI_API_KEY` and state that it belongs in the server environment without a `NEXT_PUBLIC_` prefix.
 
-```text
-OLLAMA_ORIGINS=http://localhost:3000
-```
-
-Do not silently continue when Ollama is unreachable or the configured model is missing.
+Do not silently continue when cloud inference is unavailable. Never display, request, persist, or send the API key from the browser.
 
 Use injected fake health and renderer methods until Teammates A and B merge.
 
@@ -179,6 +180,13 @@ Build a focused demo interface with:
 - Retry after recoverable failures
 
 V1 has no direct node editor, rich-text editor, or drag-and-drop document editing.
+
+Cloud-processing disclosure:
+
+- Before the first model request, explicitly tell users that prompts, relevant reference images, and rasterized PDF pages are sent to Google AI Studio for processing.
+- State that document/PDF generation and IndexedDB persistence remain local, while AI generation and visual review require internet access.
+- Require acknowledgement before enabling generation, and keep the disclosure accessible afterward.
+- Do not imply that uploaded or rasterized images remain exclusively on-device.
 
 Reference-image behavior:
 
@@ -249,18 +257,18 @@ Export:
 - Allow export after the review limit or review failure.
 - Never download a stale preview blob when the document version has changed.
 
-## Work package C9 — PWA/offline shell
+## Work package C9 — PWA/local shell
 
 Provide:
 
 - Web app manifest
 - Installable application metadata/icons
 - Cached application shell and local static assets where supported
-- No cloud runtime dependency
+- Clear offline behavior: local session recovery, PDF rendering, and export may remain available, but generation and visual review are disabled
 
-Do not claim Ollama itself is bundled into the PWA. Diagnostics must explain that Ollama and the configured Gemma model must already be installed locally.
+Do not claim that generation is fully offline. Diagnostics and status messaging must explain that Google AI Studio inference requires internet access and a valid server-side API key.
 
-Treat sophisticated service-worker update handling as secondary to reliable local generation.
+Treat sophisticated service-worker update handling as secondary to reliable local document recovery and export.
 
 ## Work package C10 — Final integration
 
@@ -277,7 +285,7 @@ After merging:
 
 1. Replace fake document/PDF dependencies with Teammate A exports.
 2. Replace fake agent/model dependencies with Teammate B exports.
-3. Compose the exact `AgentRuntimeDependencies` in one integration module owned by C, including both injected validation functions.
+3. Compose the exact `AgentRuntimeDependencies` and `GoogleAIConfiguration` in one integration module owned by C, including both injected validation functions. The configuration contains only `provider`, `modelId`, and `transportRetries`; the server-only API key is not part of composition.
 4. Verify that no UI code mutates nodes directly.
 5. Verify intermediate renders never become the published preview.
 6. Verify every successful state transition triggers persistence.
@@ -294,8 +302,10 @@ After merging:
 - Follow-up chat keeps the old preview visible until replacement is ready.
 - Undo restores a checkpoint and rerenders.
 - Export reuses a render only when both document ID and version match.
-- Ollama/CORS/model failures show actionable diagnostics.
-- The app has no Ollama API route or cloud inference dependency.
+- Missing-key, authentication, rate-limit, internet, Google service, model, and vision failures show actionable diagnostics.
+- The browser uses only B-owned same-origin AI routes; no secret enters client bundles or browser requests.
+- The UI explicitly discloses that prompts, relevant reference images, and rasterized PDF pages are sent to Google AI Studio.
+- Local document/PDF/IndexedDB functions remain usable where possible without internet, while generation and review clearly require it.
 
 ## Required public barrels
 
@@ -324,9 +334,9 @@ Keep app composition inside C's owned UI/integration files rather than adding cr
 
 ## Final demo smoke test
 
-1. Start Ollama with the documented CORS origin.
-2. Open the app and pass diagnostics/warm-up.
-3. Attach a reference image.
+1. Set `GOOGLE_GENERATIVE_AI_API_KEY` in the server environment without a `NEXT_PUBLIC_` prefix and start the Next.js app with internet access.
+2. Open the app, acknowledge the cloud-data-transfer disclosure, and pass diagnostics/warm-up through B's same-origin routes.
+3. Attach a reference image with the understanding that relevant images may be sent to Google AI Studio.
 4. Ask for a professional proposal.
 5. Observe status stages while intermediate PDFs remain hidden.
 6. Receive the reviewed final PDF preview.
