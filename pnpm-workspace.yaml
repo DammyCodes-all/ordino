@@ -1,9 +1,5 @@
 allowBuilds:
-  canvas: true
-  sharp: false
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+  sharp: true
 minimumReleaseAgeExclude:
   - '@ai-sdk/gateway@4.0.28'
   - '@ai-sdk/google@4.0.23'
