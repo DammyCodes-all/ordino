@@ -11,6 +11,7 @@ import {
   type InternalRenderResult,
   internalRenderResultSchema,
   type PdfPort,
+  exportResultSchema,
 } from "./rendering";
 import { type AppResult, appErrorSchema } from "./result";
 import { visualReviewResultSchema } from "./review";
@@ -37,6 +38,7 @@ export const agentTurnOutputSchema = z
     document: documentStateSchema,
     createdCheckpoints: z.array(documentCheckpointSchema),
     finalRender: internalRenderResultSchema,
+    exportResult: exportResultSchema.nullable(),
     validation: validationReportSchema,
     visualReview: visualReviewResultSchema.nullable(),
     reviewIterations: z.union([

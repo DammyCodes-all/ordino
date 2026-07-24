@@ -102,6 +102,27 @@ Output one action at a time as JSON matching the schema below.
 Write the document section by section based on the plan.${historyBlock}`;
 }
 
+function formatActionResult(action: WriterAction, result: any): string {
+  if (!result || !result.success) {
+    return `FAILED — ${result?.error?.message || "unknown error"}`;
+  }
+  const data = result.data;
+  if (action.action === "addNode" && data?.nodeId) {
+    return `→ created nodeId: "${data.nodeId}"`;
+  }
+  if (action.action === "deleteNode") {
+    return `→ removed nodeId: "${action.nodeId}"`;
+  }
+  if (action.action === "editNode") {
+    const changedFields = action.patch ? Object.keys(action.patch).join(", ") : "";
+    return `→ edited nodeId: "${action.nodeId}" (${changedFields || "style"})`;
+  }
+  if (action.action === "moveNode") {
+    return `→ moved nodeId: "${action.nodeId}"`;
+  }
+  return "succeeded";
+}
+
 export async function runWriterLoop(
   client: GoogleAIClient,
   document: DocumentState,
@@ -155,10 +176,8 @@ export async function runWriterLoop(
     const r = executeAction(action, currentDoc, toolExecutor);
     if (r.result.success) {
       currentDoc = r.updatedDoc;
-      history.push(`  Step ${steps}: ${action.action} succeeded`);
-    } else {
-      history.push(`  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`);
     }
+    history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
   }
 
   return {
