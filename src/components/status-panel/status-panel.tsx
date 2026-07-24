@@ -21,6 +21,7 @@ function toneFor(
   stage: WorkflowStage,
   current: WorkflowStage,
   events: { stage: WorkflowStage; level: string }[],
+  running: boolean,
 ) {
   const seen = events.some((event) => event.stage === stage);
   const failed = events.some(
@@ -30,21 +31,36 @@ function toneFor(
 
   if (failed) return "failed";
   if (cancelled && seen) return "cancelled";
-  if (current === stage && current !== "ready") return "running";
+  if (running && current === stage) return "running";
   if (seen || current === "ready") return "completed";
   return "pending";
 }
 
-export function StatusPanel() {
+type StatusPanelProps = {
+  compact?: boolean;
+};
+
+export function StatusPanel({ compact = false }: StatusPanelProps) {
   const { workflowEvents, turn, stageLabel } = useSession();
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-4">
+    <div
+      className={`flex flex-col gap-3 ${compact ? "px-0 py-0" : "px-4 py-4"}`}
+    >
       <div className="rounded-xl border border-border-subtle bg-surface-raised px-3 py-2">
         <p className="text-[11px] uppercase tracking-wider text-muted-dim">
-          Current
+          {turn.running ? "Generating" : "Current"}
         </p>
-        <p className="mt-1 text-sm text-foreground">{stageLabel}</p>
+        <p className="mt-1 text-sm text-foreground">
+          {turn.running ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-accent animate-pulse-soft" />
+              {stageLabel}…
+            </span>
+          ) : (
+            stageLabel
+          )}
+        </p>
         {turn.reviewIteration > 0 ? (
           <p className="mt-1 text-xs text-muted-dim">
             Review iteration {turn.reviewIteration}/3
@@ -54,7 +70,7 @@ export function StatusPanel() {
 
       <ol className="flex flex-col gap-1.5">
         {PIPELINE.map((stage) => {
-          const tone = toneFor(stage, turn.stage, workflowEvents);
+          const tone = toneFor(stage, turn.stage, workflowEvents, turn.running);
           return (
             <li
               key={stage}
@@ -75,7 +91,11 @@ export function StatusPanel() {
               />
               <span
                 className={
-                  tone === "pending" ? "text-muted-dim" : "text-foreground/90"
+                  tone === "running"
+                    ? "font-medium text-foreground"
+                    : tone === "pending"
+                      ? "text-muted-dim"
+                      : "text-foreground/90"
                 }
               >
                 {STAGE_LABELS[stage]}
@@ -85,7 +105,7 @@ export function StatusPanel() {
         })}
       </ol>
 
-      {workflowEvents.length > 0 ? (
+      {!compact && workflowEvents.length > 0 ? (
         <div className="mt-2 border-t border-border-subtle pt-3">
           <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-dim">
             Event log
@@ -96,11 +116,13 @@ export function StatusPanel() {
             ))}
           </ul>
         </div>
-      ) : (
+      ) : null}
+
+      {!compact && workflowEvents.length === 0 ? (
         <p className="text-xs text-muted-dim">
           Workflow stages appear while a turn is running.
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

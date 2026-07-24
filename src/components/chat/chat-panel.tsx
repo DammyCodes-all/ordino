@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
 import { ReferenceChips } from "@/components/reference-images/reference-chips";
+import { StatusPanel } from "@/components/status-panel/status-panel";
 
 export function ChatPanel() {
   const {
@@ -128,9 +129,11 @@ export function ChatPanel() {
               </article>
             ))}
             {turn.running ? (
-              <div className="flex items-center gap-2 text-sm text-muted animate-fade-up">
-                <span className="size-1.5 rounded-full bg-accent animate-pulse-soft" />
-                {stageLabel}…
+              <div className="mr-4 animate-fade-up rounded-2xl border border-border bg-surface/80 p-4">
+                <p className="mb-3 text-[11px] uppercase tracking-wider text-muted-dim">
+                  Ordino · workflow
+                </p>
+                <StatusPanel compact />
               </div>
             ) : null}
             <div ref={bottomRef} />

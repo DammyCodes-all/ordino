@@ -56,7 +56,7 @@ const MOCK_TURN_STAGES: WorkflowStage[] = [
   "ready",
 ];
 
-type RightPanelTab = "outline" | "status" | "preview";
+type MainView = "chat" | "preview";
 
 type SessionContextValue = {
   document: DocumentState;
@@ -71,14 +71,14 @@ type SessionContextValue = {
   disclosureOpen: boolean;
   diagnosticsOpen: boolean;
   rightPanelOpen: boolean;
-  rightPanelTab: RightPanelTab;
+  mainView: MainView;
   health: GoogleAIHealthResponse | null;
   diagnosticChecks: DiagnosticCheck[];
   generationBlocked: boolean;
   stageLabel: string;
   actionsDisabled: boolean;
   setRightPanelOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: RightPanelTab) => void;
+  setMainView: (view: MainView) => void;
   setDisclosureOpen: (open: boolean) => void;
   setDiagnosticsOpen: (open: boolean) => void;
   acceptDisclosure: () => void;
@@ -140,7 +140,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("preview");
+  const [mainView, setMainView] = useState<MainView>("chat");
   const [health, setHealth] = useState<GoogleAIHealthResponse | null>(null);
   const [diagnosticChecks, setDiagnosticChecks] = useState<DiagnosticCheck[]>([
     {
@@ -315,8 +315,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ]);
       setWorkflowEvents([]);
       setTurn({ running: true, stage: "planning", reviewIteration: 0 });
+      setMainView("chat");
       setRightPanelOpen(true);
-      setRightPanelTab("status");
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -331,7 +331,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const nextDocument = createMockDocumentFromPrompt(trimmed);
         setDocument(nextDocument);
         setPublishedPreview(true);
-        setRightPanelTab("preview");
+        setMainView("preview");
 
         const assistantMessage: ConversationMessage = {
           id: createId("message"),
@@ -438,6 +438,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCheckpoints([]);
     setWorkflowEvents([]);
     setPublishedPreview(false);
+    setMainView("chat");
     setTurn({ running: false, stage: "idle", reviewIteration: 0 });
   }, [actionsDisabled]);
 
