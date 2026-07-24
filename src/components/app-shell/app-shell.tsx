@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AppSplash } from "@/components/app-shell/app-splash";
 import {
   ChatHistoryDrawer,
   ChatHistorySidebar,
@@ -83,7 +84,9 @@ export function AppShell() {
   return (
     <SessionProvider>
       <PdfAnalysisProvider>
-        <ShellLayout />
+        <AppSplash>
+          <ShellLayout />
+        </AppSplash>
       </PdfAnalysisProvider>
     </SessionProvider>
   );
