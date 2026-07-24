@@ -58,9 +58,7 @@ export function ChatPanel() {
     event?.preventDefault();
     const text = draft;
     if (!text.trim() || actionsDisabled || generationBlocked) return;
-    if (cloudDisclosureAccepted) {
-      setDraft("");
-    }
+    setDraft("");
     await sendPrompt(text);
   }
 

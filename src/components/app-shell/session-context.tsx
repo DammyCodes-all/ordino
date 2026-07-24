@@ -252,7 +252,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [visualReview, setVisualReview] = useState<VisualReviewResult | null>(
     null,
   );
-  const [cloudDisclosureAccepted, setCloudDisclosureAccepted] = useState(false);
+  const [cloudDisclosureAccepted, setCloudDisclosureAccepted] = useState(true);
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -439,11 +439,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const trimmed = text.trim();
       if (!trimmed || turn.running || generationBlocked) return;
 
-      if (!cloudDisclosureAccepted) {
-        setDisclosureOpen(true);
-        return;
-      }
-
       const priorConversation = messagesRef.current;
       const snapshotDocument = documentRef.current;
       const refs = referenceImagesRef.current;
@@ -579,7 +574,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         abortRef.current = null;
       }
     },
-    [cloudDisclosureAccepted, generationBlocked, publishRender, turn.running],
+    [generationBlocked, publishRender, turn.running],
   );
 
   const undo = useCallback(() => {
