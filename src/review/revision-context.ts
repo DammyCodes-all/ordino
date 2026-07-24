@@ -42,7 +42,14 @@ Visual Review Issues:
 ${JSON.stringify(context.visualIssues, null, 2)}
 
 Instructions:
-1. Fix each reported issue using document tools (editNode, moveNode, deleteNode, addNode).
+1. Fix each reported issue with one JSON action per step (editNode, moveNode, deleteNode, addNode, readNode).
 2. Call readNode before making content-sensitive edits if outline preview is insufficient.
-3. Call finalizeDocument when finished.`;
+3. Output {"action":"finalize"} when finished.
+
+Action examples (position MUST use "kind", never "anchor"):
+{"action":"editNode","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Fixed text"}}
+{"action":"addNode","node":{"type":"paragraph","text":"New text."},"position":{"kind":"end"}}
+{"action":"moveNode","nodeId":"node_id","position":{"kind":"after","nodeId":"other_id"}}
+{"action":"deleteNode","nodeId":"node_id"}
+{"action":"finalize"}`;
 }

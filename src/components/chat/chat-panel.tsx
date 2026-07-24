@@ -170,14 +170,6 @@ export function ChatPanel() {
                 </div>
               </article>
             ))}
-            {turn.running ? (
-              <div className="animate-fade-up rounded-3xl border border-border bg-surface/80 p-6">
-                <p className="mb-4 text-xs uppercase tracking-wider text-muted-dim">
-                  Ordino · workflow
-                </p>
-                <StatusPanel />
-              </div>
-            ) : null}
             <div ref={bottomRef} />
           </div>
         )}
@@ -187,6 +179,13 @@ export function ChatPanel() {
         <GemmaVoicePanel />
         <ReviewFindings />
         <ChatOutline />
+        <div className={chatNarrow ? "w-full" : "mx-auto max-w-2xl"}>
+          {turn.running ||
+          turn.stage === "failed" ||
+          turn.stage === "cancelled" ? (
+            <StatusPanel />
+          ) : null}
+        </div>
         <form
           onSubmit={(event) => void handleSubmit(event)}
           className={chatNarrow ? "w-full" : "mx-auto max-w-2xl"}
