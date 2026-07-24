@@ -13,14 +13,14 @@ export function PdfPreview({ variant: _variant = "panel" }: PdfPreviewProps) {
   if (!publishedPreview) {
     return (
       <div className="flex h-full min-h-[16rem] flex-col items-center justify-center gap-2 px-6 text-center">
-        <div className="h-40 w-28 rounded-sm border border-dashed border-border bg-surface-raised/50" />
-        <p className="mt-3 text-sm text-muted">No published preview yet</p>
+        <div className="h-36 w-24 border border-dashed border-border bg-surface-raised/50" />
+        <p className="mt-2 text-sm text-muted">No published preview yet</p>
         <p className="max-w-[16rem] text-xs leading-relaxed text-muted-dim">
           Intermediate renders stay hidden. A PDF preview appears when a turn
           finishes successfully.
         </p>
         {turn.running ? (
-          <p className="mt-2 text-xs text-accent animate-pulse-soft">
+          <p className="mt-1 text-xs text-accent animate-pulse-soft">
             Generating… stay on Chat to watch workflow status
           </p>
         ) : null}
@@ -30,8 +30,8 @@ export function PdfPreview({ variant: _variant = "panel" }: PdfPreviewProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-2">
-        <p className="truncate text-[11px] text-muted-dim">
+      <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-3 py-1.5">
+        <p className="truncate text-[10px] text-muted-dim">
           PDF · A4 · v{document.version}
           {turn.running ? " · previous version while revising" : ""}
         </p>

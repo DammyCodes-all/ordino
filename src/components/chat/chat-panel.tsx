@@ -36,7 +36,7 @@ export function ChatPanel() {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [draft]);
 
   const empty = messages.length === 0;
@@ -60,22 +60,20 @@ export function ChatPanel() {
   }
 
   return (
-    <section
-      className="relative flex h-full min-w-0 flex-1 flex-col"
-    >
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-4 sm:px-5">
+    <section className="relative flex h-full min-w-0 flex-1 flex-col">
+      <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-3 sm:px-4">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium tracking-tight">Ordino</p>
-          <p className="truncate text-xs text-muted-dim">
+          <p className="truncate text-[11px] text-muted-dim">
             {chatNarrow ? "Chat · preview open" : "Chat-only document studio"}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           {publishedPreview ? (
             <button
               type="button"
               onClick={() => setPreviewOpen(!previewOpen)}
-              className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+              className={`border px-2.5 py-1 text-xs transition-colors ${
                 previewOpen
                   ? "border-accent-dim bg-accent-soft text-accent"
                   : "border-border text-muted hover:text-foreground"
@@ -88,7 +86,7 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={cancelTurn}
-              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-danger hover:text-danger"
+              className="border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-danger hover:text-danger"
             >
               Cancel
             </button>
@@ -96,15 +94,15 @@ export function ChatPanel() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-5">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4">
         {empty ? (
-          <div className="mx-auto flex min-h-[calc(100%-2rem)] max-w-2xl flex-col items-center justify-center gap-4 py-16 text-center animate-fade-up">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-muted-dim">
+          <div className="mx-auto flex min-h-[calc(100%-2rem)] max-w-2xl flex-col items-center justify-center gap-3 py-12 text-center animate-fade-up">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-muted-dim">
               Ordino
             </p>
             <h1
               className={`font-medium tracking-tight text-foreground ${
-                chatNarrow ? "text-2xl" : "max-w-xl text-3xl sm:text-4xl"
+                chatNarrow ? "text-xl" : "max-w-xl text-2xl sm:text-3xl"
               }`}
             >
               What document should we create?
@@ -113,7 +111,7 @@ export function ChatPanel() {
               Prompt in chat. When a turn finishes, the preview opens beside you
               — Claude-style — and the outline stays in this thread.
             </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {[
                 "One-page product brief for investors",
                 "Formal meeting agenda with table",
@@ -124,7 +122,7 @@ export function ChatPanel() {
                   type="button"
                   disabled={actionsDisabled || generationBlocked}
                   onClick={() => setDraft(suggestion)}
-                  className="rounded-full border border-border bg-surface px-3 py-1.5 text-left text-xs text-muted transition-colors hover:border-accent-dim hover:text-foreground disabled:opacity-40"
+                  className="border border-border bg-surface px-2.5 py-1 text-left text-xs text-muted transition-colors hover:border-accent-dim hover:text-foreground disabled:opacity-40"
                 >
                   {suggestion}
                 </button>
@@ -133,7 +131,7 @@ export function ChatPanel() {
           </div>
         ) : (
           <div
-            className={`mx-auto flex flex-col gap-6 py-8 ${
+            className={`mx-auto flex flex-col gap-4 py-5 ${
               chatNarrow ? "max-w-none" : "max-w-2xl"
             }`}
           >
@@ -143,16 +141,16 @@ export function ChatPanel() {
                 className={`animate-fade-up ${
                   message.role === "user"
                     ? chatNarrow
-                      ? "ml-4"
-                      : "ml-8 sm:ml-16"
-                    : "mr-2"
+                      ? "ml-3"
+                      : "ml-6 sm:ml-12"
+                    : "mr-1"
                 }`}
               >
-                <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-dim">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-dim">
                   {message.role === "user" ? "You" : "Ordino"}
                 </p>
                 <div
-                  className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap ${
+                  className={`px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
                     message.role === "user"
                       ? "bg-surface-raised text-foreground"
                       : "bg-transparent text-foreground/95"
@@ -163,8 +161,8 @@ export function ChatPanel() {
               </article>
             ))}
             {turn.running ? (
-              <div className="animate-fade-up rounded-2xl border border-border bg-surface/80 p-4">
-                <p className="mb-3 text-[11px] uppercase tracking-wider text-muted-dim">
+              <div className="animate-fade-up border border-border bg-surface/80 p-3">
+                <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-dim">
                   Ordino · workflow
                 </p>
                 <StatusPanel compact />
@@ -175,7 +173,7 @@ export function ChatPanel() {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border-subtle bg-background/80 px-3 py-3 backdrop-blur-md sm:px-5 sm:py-4">
+      <div className="shrink-0 border-t border-border-subtle bg-background/85 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <ChatOutline />
         <form
           onSubmit={(event) => void handleSubmit(event)}
@@ -183,11 +181,11 @@ export function ChatPanel() {
         >
           <ReferenceChips />
           {generationBlocked ? (
-            <p className="mb-2 text-xs text-danger">
+            <p className="mb-1.5 text-xs text-danger">
               Generation disabled until Google AI Studio health checks pass.
             </p>
           ) : null}
-          <div className="flex items-end gap-2 rounded-2xl border border-border bg-composer px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] focus-within:border-accent-dim">
+          <div className="flex items-end gap-1.5 border border-border bg-composer px-2 py-1.5 focus-within:border-accent">
             <input
               ref={fileRef}
               type="file"
@@ -204,11 +202,11 @@ export function ChatPanel() {
               title="Attach reference image"
               disabled={actionsDisabled}
               onClick={() => fileRef.current?.click()}
-              className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+              className="mb-0.5 flex size-8 shrink-0 items-center justify-center text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
             >
               <svg
-                width="18"
-                height="18"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 role="img"
@@ -231,17 +229,17 @@ export function ChatPanel() {
               rows={1}
               placeholder="Ask Ordino to draft or revise…"
               disabled={actionsDisabled || generationBlocked}
-              className="max-h-[180px] min-h-[40px] flex-1 resize-none bg-transparent py-2 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-dim disabled:opacity-50"
+              className="max-h-[160px] min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-sm leading-5 text-foreground outline-none placeholder:text-muted-dim disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={actionsDisabled || generationBlocked || !draft.trim()}
-              className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-background transition-opacity disabled:opacity-30"
+              className="mb-0.5 flex size-8 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
               aria-label="Send"
             >
               <svg
-                width="16"
-                height="16"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 role="img"

@@ -22,9 +22,9 @@ export function ChatOutline() {
   if (outline.length === 0) return null;
 
   return (
-    <div className="mx-auto mb-2 w-full max-w-2xl animate-fade-up">
-      <div className="overflow-hidden rounded-2xl border border-border bg-surface/70">
-        <div className="flex items-center gap-2 px-3 py-2">
+    <div className="mx-auto mb-1.5 w-full max-w-2xl animate-fade-up">
+      <div className="overflow-hidden border border-border bg-surface/70">
+        <div className="flex items-center gap-2 px-2.5 py-1.5">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
@@ -34,7 +34,7 @@ export function ChatOutline() {
             <span className="truncate text-xs font-medium text-foreground">
               Outline · {document.meta.title}
             </span>
-            <span className="shrink-0 text-[11px] text-muted-dim">
+            <span className="shrink-0 text-[10px] text-muted-dim">
               {outline.length} blocks
             </span>
           </button>
@@ -42,18 +42,18 @@ export function ChatOutline() {
             <button
               type="button"
               onClick={() => setPreviewOpen(!previewOpen)}
-              className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] text-muted transition-colors hover:text-foreground"
+              className="shrink-0 border border-border px-2 py-0.5 text-[11px] text-muted transition-colors hover:text-foreground"
             >
               {previewOpen ? "Hide preview" : "Open preview"}
             </button>
           ) : null}
         </div>
         {expanded ? (
-          <div className="max-h-40 space-y-0.5 overflow-y-auto border-t border-border-subtle px-2 py-2">
+          <div className="max-h-36 space-y-0 overflow-y-auto border-t border-border-subtle px-1.5 py-1.5">
             {outline.map((item) => (
               <div
                 key={item.id}
-                className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs text-muted"
+                className="flex items-start gap-2 px-1.5 py-1 text-xs text-muted"
               >
                 <span className="mt-0.5 w-4 shrink-0 text-center font-mono text-[10px] text-accent-dim">
                   {TYPE_LABELS[item.type] ?? "·"}

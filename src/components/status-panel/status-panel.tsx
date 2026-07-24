@@ -46,15 +46,15 @@ export function StatusPanel({ compact = false }: StatusPanelProps) {
 
   return (
     <div
-      className={`flex flex-col gap-3 ${compact ? "px-0 py-0" : "px-4 py-4"}`}
+      className={`flex flex-col gap-2 ${compact ? "px-0 py-0" : "px-3 py-3"}`}
     >
-      <div className="rounded-xl border border-border-subtle bg-surface-raised px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wider text-muted-dim">
+      <div className="border border-border-subtle bg-surface-raised px-2.5 py-1.5">
+        <p className="text-[10px] uppercase tracking-wider text-muted-dim">
           {turn.running ? "Generating" : "Current"}
         </p>
-        <p className="mt-1 text-sm text-foreground">
+        <p className="mt-0.5 text-sm text-foreground">
           {turn.running ? (
-            <span className="inline-flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-accent animate-pulse-soft" />
               {stageLabel}…
             </span>
@@ -63,22 +63,22 @@ export function StatusPanel({ compact = false }: StatusPanelProps) {
           )}
         </p>
         {turn.reviewIteration > 0 ? (
-          <p className="mt-1 text-xs text-muted-dim">
+          <p className="mt-0.5 text-[11px] text-muted-dim">
             Review iteration {turn.reviewIteration}/3
           </p>
         ) : null}
       </div>
 
-      <ol className="flex flex-col gap-1.5">
+      <ol className="flex flex-col gap-0.5">
         {PIPELINE.map((stage) => {
           const tone = toneFor(stage, turn.stage, workflowEvents, turn.running);
           return (
             <li
               key={stage}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+              className="flex items-center gap-2 px-1.5 py-1 text-sm"
             >
               <span
-                className={`size-2 shrink-0 rounded-full ${
+                className={`size-1.5 shrink-0 rounded-full ${
                   tone === "running"
                     ? "bg-accent animate-pulse-soft"
                     : tone === "completed"
@@ -107,11 +107,11 @@ export function StatusPanel({ compact = false }: StatusPanelProps) {
       </ol>
 
       {!compact && workflowEvents.length > 0 ? (
-        <div className="mt-2 border-t border-border-subtle pt-3">
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-dim">
+        <div className="mt-1 border-t border-border-subtle pt-2">
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-dim">
             Event log
           </p>
-          <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto text-xs text-muted">
+          <ul className="flex max-h-36 flex-col gap-0.5 overflow-y-auto text-[11px] text-muted">
             {workflowEvents.map((event) => (
               <li key={`${event.stage}-${event.createdAt}`}>{event.message}</li>
             ))}
@@ -120,7 +120,7 @@ export function StatusPanel({ compact = false }: StatusPanelProps) {
       ) : null}
 
       {!compact && workflowEvents.length === 0 ? (
-        <p className="text-xs text-muted-dim">
+        <p className="text-[11px] text-muted-dim">
           Workflow stages appear while a turn is running.
         </p>
       ) : null}

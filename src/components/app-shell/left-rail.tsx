@@ -23,7 +23,7 @@ function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex size-10 items-center justify-center rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`flex size-9 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? "bg-accent-soft text-accent"
           : "text-muted hover:bg-surface-hover hover:text-foreground"
@@ -36,7 +36,7 @@ function IconButton({
 
 function RailIcon({ title, path }: { title: string; path: React.ReactNode }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" role="img">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" role="img">
       <title>{title}</title>
       {path}
     </svg>
@@ -67,18 +67,18 @@ export function LeftRail() {
       : "bg-success";
 
   return (
-    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface py-4">
-      <div className="mb-6 flex flex-col items-center gap-2">
-        <div className="flex size-10 items-center justify-center rounded-2xl bg-accent-soft text-sm font-semibold tracking-tight text-accent">
+    <aside className="flex w-[var(--rail-width)] shrink-0 flex-col items-center border-r border-border-subtle bg-surface py-3">
+      <div className="mb-4 flex flex-col items-center gap-1.5">
+        <div className="flex size-9 items-center justify-center bg-primary text-xs font-semibold tracking-tight text-primary-foreground">
           Or
         </div>
         <span
-          className={`size-2 rounded-full ${statusTone}`}
+          className={`size-1.5 rounded-full ${statusTone}`}
           title="Session status"
         />
       </div>
 
-      <nav className="flex flex-1 flex-col items-center gap-1">
+      <nav className="flex flex-1 flex-col items-center gap-0.5">
         <IconButton
           label="New document"
           onClick={newDocument}
@@ -154,7 +154,7 @@ export function LeftRail() {
         </IconButton>
       </nav>
 
-      <div className="mb-4 flex flex-col items-center gap-2">
+      <div className="mb-3 flex flex-col items-center gap-1.5">
         <IconButton
           label={
             theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
@@ -196,7 +196,7 @@ export function LeftRail() {
             />
           )}
         </IconButton>
-        <p className="rotate-180 text-[10px] tracking-[0.2em] text-muted-dim [writing-mode:vertical-rl]">
+        <p className="rotate-180 text-[9px] tracking-[0.2em] text-muted-dim [writing-mode:vertical-rl]">
           ORDINO
         </p>
       </div>
