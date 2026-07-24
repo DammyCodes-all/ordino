@@ -62,15 +62,17 @@ export function waitForVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]>
 export function unlockSpeech(): void {
   if (!speechSynthesisSupported()) return;
   try {
-    window.speechSynthesis.cancel();
     window.speechSynthesis.resume();
-    const warm = new SpeechSynthesisUtterance(" ");
-    warm.volume = 0;
+    // Prime the voice list.
+    window.speechSynthesis.getVoices();
+    // Speak a near-silent token in the user gesture; do not cancel it.
+    const warm = new SpeechSynthesisUtterance(".");
+    warm.volume = 0.01;
     warm.rate = 2;
+    warm.pitch = 1;
     warm.onend = () => undefined;
     warm.onerror = () => undefined;
     window.speechSynthesis.speak(warm);
-    window.speechSynthesis.cancel();
   } catch {
     // ignore
   }
@@ -157,6 +159,11 @@ export async function speakText(
   }
 
   return new Promise((resolve, reject) => {
+    // Avoid stacking on a stuck queue from a prior cancel.
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
     const utterance = new SpeechSynthesisUtterance(trimmed);
     utterance.lang = options?.lang || navigator.language || "en-US";
     utterance.rate = options?.rate ?? 1;
@@ -168,10 +175,10 @@ export async function speakText(
     let settled = false;
     const keepalive = window.setInterval(() => {
       // Chromium pauses synthesis after ~15s unless resumed.
-      if (window.speechSynthesis.speaking) {
+      if (window.speechSynthesis.paused || window.speechSynthesis.speaking) {
         window.speechSynthesis.resume();
       }
-    }, 5_000);
+    }, 4_000);
 
     const finish = (fn: () => void) => {
       if (settled) return;
@@ -194,20 +201,28 @@ export async function speakText(
         finish(() => resolve());
         return;
       }
-      finish(() =>
-        reject(new Error(error || "Speech synthesis failed.")),
-      );
+      finish(() => reject(new Error(error || "Speech synthesis failed.")));
     };
 
     window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
 
-    // If the engine silently drops the utterance, don't hang forever.
+    // Watchdog: if the engine never starts, fail clearly instead of hanging.
     window.setTimeout(() => {
-      if (!settled && !window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-        finish(() => resolve());
+      if (
+        !settled &&
+        !window.speechSynthesis.speaking &&
+        !window.speechSynthesis.pending
+      ) {
+        finish(() =>
+          reject(
+            new Error(
+              "Speech engine did not start. Install system voices (e.g. speech-dispatcher / espeak) or try Chrome.",
+            ),
+          ),
+        );
       }
-    }, Math.min(30_000, Math.max(4_000, trimmed.length * 80)));
+    }, 2500);
   });
 }
 
