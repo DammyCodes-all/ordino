@@ -1,18 +1,6 @@
 "use client";
 
-import {
-  Add01Icon,
-  Alert02Icon,
-  ArrowRight01Icon,
-  AttachmentIcon,
-  Cancel01Icon,
-  CloudIcon,
-  Download01Icon,
-  FileExportIcon,
-  Moon02Icon,
-  SidebarRightIcon,
-  Sun03Icon,
-} from "@hugeicons/core-free-icons";
+import { Cancel01Icon, FileExportIcon } from "@hugeicons/core-free-icons";
 import { AnimatePresence, motion } from "motion/react";
 import { useSession } from "@/components/app-shell/session-context";
 import { PdfPreview } from "@/components/pdf-preview/pdf-preview";
@@ -50,7 +38,12 @@ export function PreviewSidebar() {
             initial={{ opacity: 0, x: 28, filter: "blur(8px)" }}
             animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, x: 20, filter: "blur(6px)" }}
-            transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.85 }}
+            transition={{
+              type: "spring",
+              stiffness: 320,
+              damping: 28,
+              mass: 0.85,
+            }}
             className="glass-panel pointer-events-auto absolute inset-y-3 right-3 z-40 flex w-[min(calc(100%-1.5rem),210mm)] flex-col overflow-hidden rounded-[1.5rem] md:w-[210mm]"
           >
             <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
@@ -90,17 +83,3 @@ export function PreviewSidebar() {
     </AnimatePresence>
   );
 }
-
-export const previewIcons = {
-  Add01Icon,
-  Alert02Icon,
-  ArrowRight01Icon,
-  AttachmentIcon,
-  Cancel01Icon,
-  CloudIcon,
-  Download01Icon,
-  FileExportIcon,
-  Moon02Icon,
-  SidebarRightIcon,
-  Sun03Icon,
-};

@@ -1,10 +1,17 @@
 "use client";
 
+import {
+  ArrowRight01Icon,
+  AttachmentIcon,
+  Cancel01Icon,
+  SidebarRightIcon,
+} from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
 import { ChatOutline } from "@/components/document-outline/chat-outline";
 import { ReferenceChips } from "@/components/reference-images/reference-chips";
 import { StatusPanel } from "@/components/status-panel/status-panel";
+import { AppIcon } from "@/components/ui/app-icon";
 
 export function ChatPanel() {
   const {
@@ -60,7 +67,11 @@ export function ChatPanel() {
   }
 
   return (
-    <section className="relative flex h-full min-w-0 flex-1 flex-col">
+    <section
+      className={`relative flex h-full min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-out ${
+        chatNarrow ? "md:pr-[calc(210mm+1.5rem)]" : ""
+      }`}
+    >
       <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-3 sm:px-4">
         <div className="min-w-0">
           <p className="brand-wordmark-solid truncate text-lg">ordino</p>
@@ -73,12 +84,13 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={() => setPreviewOpen(!previewOpen)}
-              className={`border px-2.5 py-1 text-xs transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
                 previewOpen
                   ? "border-accent-dim bg-accent-soft text-accent"
                   : "border-border text-muted hover:text-foreground"
               }`}
             >
+              <AppIcon icon={SidebarRightIcon} size={13} />
               {previewOpen ? "Preview" : "Open preview"}
             </button>
           ) : null}
@@ -86,8 +98,9 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={cancelTurn}
-              className="border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-danger hover:text-danger"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-danger hover:text-danger"
             >
+              <AppIcon icon={Cancel01Icon} size={13} />
               Cancel
             </button>
           ) : null}
@@ -200,24 +213,13 @@ export function ChatPanel() {
               title="Attach reference image"
               disabled={actionsDisabled}
               onClick={() => fileRef.current?.click()}
-              className="mb-0.5 flex size-8 shrink-0 items-center justify-center text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+              className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                role="img"
-              >
-                <title>Attach reference image</title>
-                <path
-                  d="M21 12.5V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h5.5M16 3h5v5M14 10l7-7"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <AppIcon
+                icon={AttachmentIcon}
+                size={16}
+                title="Attach reference image"
+              />
             </button>
             <textarea
               ref={textareaRef}
@@ -232,25 +234,10 @@ export function ChatPanel() {
             <button
               type="submit"
               disabled={actionsDisabled || generationBlocked || !draft.trim()}
-              className="mb-0.5 flex size-8 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
+              className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
               aria-label="Send"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                role="img"
-              >
-                <title>Send</title>
-                <path
-                  d="M5 12h14M13 6l6 6-6 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <AppIcon icon={ArrowRight01Icon} size={14} title="Send" />
             </button>
           </div>
         </form>

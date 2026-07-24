@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  SidebarRightIcon,
+} from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
+import { AppIcon } from "@/components/ui/app-icon";
 
 const TYPE_LABELS: Record<string, string> = {
   heading: "H",
@@ -23,14 +29,18 @@ export function ChatOutline() {
 
   return (
     <div className="mx-auto mb-1.5 w-full max-w-2xl animate-fade-up">
-      <div className="overflow-hidden border border-border bg-surface/70">
+      <div className="overflow-hidden rounded-[1rem] border border-border/80 bg-surface/70 backdrop-blur-md">
         <div className="flex items-center gap-2 px-2.5 py-1.5">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
-            <span className="text-muted-dim">{expanded ? "▾" : "▸"}</span>
+            <AppIcon
+              icon={expanded ? ArrowDown01Icon : ArrowRight01Icon}
+              size={14}
+              className="text-muted-dim"
+            />
             <span className="truncate text-xs font-medium text-foreground">
               Outline · {document.meta.title}
             </span>
@@ -42,8 +52,9 @@ export function ChatOutline() {
             <button
               type="button"
               onClick={() => setPreviewOpen(!previewOpen)}
-              className="shrink-0 border border-border px-2 py-0.5 text-[11px] text-muted transition-colors hover:text-foreground"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted transition-colors hover:text-foreground"
             >
+              <AppIcon icon={SidebarRightIcon} size={12} />
               {previewOpen ? "Hide preview" : "Open preview"}
             </button>
           ) : null}
