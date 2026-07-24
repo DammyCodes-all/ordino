@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Alert02Icon,
   BubbleChatIcon,
-  CloudIcon,
   File01Icon,
   SidebarRightIcon,
 } from "@hugeicons/core-free-icons";
@@ -51,14 +49,9 @@ export function LeftRail({
 }) {
   const {
     turn,
-    cloudDisclosureAccepted,
     generationBlocked,
-    diagnosticsOpen,
-    disclosureOpen,
     publishedPreview,
     previewOpen,
-    setDisclosureOpen,
-    setDiagnosticsOpen,
     setPreviewOpen,
   } = useSession();
   const { open: analysisOpen, setOpen: setAnalysisOpen } = usePdfAnalysis();
@@ -72,12 +65,14 @@ export function LeftRail({
   return (
     <aside
       className={[
+        // Mobile: fixed bottom bar
         "fixed inset-x-0 bottom-0 z-40 flex items-center justify-around gap-1 border-t border-border-subtle bg-surface/90 px-2 pt-2 backdrop-blur-md",
         "pb-[max(0.5rem,var(--safe-bottom))]",
+        // Desktop: floating vertical pill
         "md:static md:inset-auto md:z-auto md:h-full md:w-[var(--rail-width)] md:shrink-0 md:flex-col md:justify-start md:gap-0 md:rounded-full md:border-0 md:bg-surface/55 md:px-0 md:py-6 md:pb-6 md:backdrop-blur-[2px]",
       ].join(" ")}
     >
-      <div className="hidden flex-col items-center gap-3 md:mb-8 md:flex">
+      <div className="mb-8 hidden flex-col items-center gap-3 md:flex">
         <div className="flex size-12 items-center justify-center overflow-hidden rounded-2xl bg-black shadow-sm">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -119,22 +114,6 @@ export function LeftRail({
           active={analysisOpen}
         >
           <AppIcon icon={File01Icon} size={20} title="Analyze PDF" />
-        </IconButton>
-
-        <IconButton
-          label="Cloud disclosure"
-          onClick={() => setDisclosureOpen(true)}
-          active={disclosureOpen || !cloudDisclosureAccepted}
-        >
-          <AppIcon icon={CloudIcon} size={20} title="Cloud disclosure" />
-        </IconButton>
-
-        <IconButton
-          label="Diagnostics"
-          onClick={() => setDiagnosticsOpen(!diagnosticsOpen)}
-          active={diagnosticsOpen || generationBlocked}
-        >
-          <AppIcon icon={Alert02Icon} size={20} title="Diagnostics" />
         </IconButton>
       </nav>
 
