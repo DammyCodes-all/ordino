@@ -32,16 +32,31 @@ describe("AgentOrchestrator acceptance tests", () => {
 
   it("runs initial turn and creates nodes, renders, and performs review", async () => {
     // Mock fetch for server API routes
+    let callCount = 0;
     vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
       if (url.includes("/api/ai/generate")) {
+        callCount++;
+        let text: string;
+        if (callCount === 1) {
+          // planDocument call: return DocumentPlan
+          text = JSON.stringify({
+            summary: "A brief plan",
+            sections: [{ heading: "Intro", purpose: "Intro text", estimatedParagraphs: 1, includeTable: false, includeList: false }],
+          });
+        } else if (callCount === 2) {
+          // runWriterLoop first step: add a heading node
+          text = JSON.stringify({
+            action: "addNode",
+            node: { type: "heading", level: 1, text: "Test Document" },
+            position: { kind: "end" },
+          });
+        } else {
+          // runWriterLoop subsequent steps: finalize
+          text = JSON.stringify({ action: "finalize" });
+        }
         return {
           ok: true,
-          json: async () => ({
-            text: JSON.stringify({
-              summary: "A brief plan",
-              sections: [{ heading: "Intro", purpose: "Intro text", estimatedParagraphs: 1, includeTable: false, includeList: false }],
-            }),
-          }),
+          json: async () => ({ text }),
         };
       }
       return { ok: true, json: async () => ({}) };

@@ -1,12 +1,9 @@
-import pdfjs from "pdfjs-dist/legacy/build/pdf.js";
-import type {
-  InternalRenderResult,
-  RasterizedPage,
-} from "../../contracts/rendering";
+const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
+import type { InternalRenderResult, RasterizedPage } from "../../contracts/rendering";
 
 declare const require: any;
 
-pdfjs.GlobalWorkerOptions.workerSrc = ""; // Not needed in Node (use legacy build)
+if (pdfjs && pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = ""; // Not needed in Node (use legacy build)
 
 export async function rasterizePdf(
   render: InternalRenderResult,
