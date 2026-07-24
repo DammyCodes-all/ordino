@@ -172,10 +172,6 @@ export async function speakText(
   text: string,
   options?: { lang?: string; rate?: number; signal?: AbortSignal },
 ): Promise<void> {
-  if (!speechSynthesisSupported()) {
-    return Promise.reject(new Error("Speech synthesis is not supported."));
-  }
-
   const trimmed = text.replace(/\s+/g, " ").trim();
   if (!trimmed) return;
 
@@ -183,18 +179,93 @@ export async function speakText(
     throw new DOMException("Aborted", "AbortError");
   }
 
+  try {
+    if (speechSynthesisSupported()) {
+      await speakWithBrowser(trimmed, options);
+      return;
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    // Fall through to server TTS when Chromium synthesis-failed.
+  }
+
+  await speakWithServer(trimmed, options);
+}
+
+let activeAudio: HTMLAudioElement | null = null;
+
+async function speakWithServer(
+  text: string,
+  options?: { lang?: string; signal?: AbortSignal },
+): Promise<void> {
+  if (options?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+
+  const response = await fetch("/api/tts/speak", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, language: options?.lang }),
+    signal: options?.signal,
+  });
+  if (!response.ok) {
+    const json = (await response.json().catch(() => ({}))) as {
+      message?: string;
+    };
+    throw new Error(json.message || `Server TTS failed (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+  await new Promise<void>((resolve, reject) => {
+    const audio = new Audio(url);
+    activeAudio = audio;
+
+    const cleanup = () => {
+      if (activeAudio === audio) activeAudio = null;
+      URL.revokeObjectURL(url);
+      options?.signal?.removeEventListener("abort", onAbort);
+    };
+
+    const onAbort = () => {
+      audio.pause();
+      cleanup();
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    options?.signal?.addEventListener("abort", onAbort);
+
+    audio.onended = () => {
+      cleanup();
+      resolve();
+    };
+    audio.onerror = () => {
+      cleanup();
+      reject(new Error("Audio playback failed."));
+    };
+
+    void audio.play().catch((error) => {
+      cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    });
+  });
+}
+
+async function speakWithBrowser(
+  text: string,
+  options?: { lang?: string; rate?: number; signal?: AbortSignal },
+): Promise<void> {
   const voices = await waitForVoices();
   if (options?.signal?.aborted) {
     throw new DOMException("Aborted", "AbortError");
   }
 
   return new Promise((resolve, reject) => {
-    // Avoid stacking on a stuck queue from a prior cancel.
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
 
-    const utterance = new SpeechSynthesisUtterance(trimmed);
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = options?.lang || navigator.language || "en-US";
     utterance.rate = options?.rate ?? 1;
     utterance.volume = 1;
@@ -204,7 +275,6 @@ export async function speakText(
 
     let settled = false;
     const keepalive = window.setInterval(() => {
-      // Chromium pauses synthesis after ~15s unless resumed.
       if (window.speechSynthesis.paused || window.speechSynthesis.speaking) {
         window.speechSynthesis.resume();
       }
@@ -237,7 +307,6 @@ export async function speakText(
     window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
 
-    // Watchdog: if the engine never starts, fail clearly instead of hanging.
     window.setTimeout(() => {
       if (
         !settled &&
@@ -245,11 +314,7 @@ export async function speakText(
         !window.speechSynthesis.pending
       ) {
         finish(() =>
-          reject(
-            new Error(
-              "Speech engine did not start. Install system voices (e.g. speech-dispatcher / espeak) or try Chrome.",
-            ),
-          ),
+          reject(new Error("Speech engine did not start.")),
         );
       }
     }, 2500);
@@ -259,6 +324,10 @@ export async function speakText(
 export function stopSpeaking() {
   if (speechSynthesisSupported()) {
     window.speechSynthesis.cancel();
+  }
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio = null;
   }
 }
 
