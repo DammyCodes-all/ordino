@@ -17,6 +17,19 @@ const PAGE_STYLE = {
   paddingRight: THEME.MARGIN.right,
 };
 
+export function chunkByPageBreaks(nodes: DocumentNode[]): DocumentNode[][] {
+  const pages: DocumentNode[][] = [[]];
+  for (const node of nodes) {
+    if (node.type === "page_break") {
+      pages.push([]);
+      continue;
+    }
+    pages[pages.length - 1]?.push(node);
+  }
+  const filtered = pages.filter((page) => page.length > 0);
+  return filtered.length > 0 ? filtered : [[]];
+}
+
 function renderNode(node: DocumentNode) {
   switch (node.type) {
     case "heading":
@@ -67,25 +80,23 @@ function PageFooter({
 }
 
 export function DocumentRenderer({ document }: { document: DocumentState }) {
-  const pages: DocumentNode[][] = [];
-  let current: DocumentNode[] = [];
-  for (const n of document.nodes) {
-    if (n.type === "page_break") {
-      pages.push(current);
-      current = [];
-    } else {
-      current.push(n);
-    }
-  }
-  pages.push(current);
-
+  const pages = chunkByPageBreaks(document.nodes);
   const title = document.meta.title || "Untitled";
 
   return (
-    <Document>
-      {pages.map((nodes, pi) => (
-        <Page key={`page-${pi}`} size={THEME.PAGE_SIZE} style={PAGE_STYLE} wrap>
-          {pi === 0 ? (
+    <Document
+      title={document.meta.title}
+      author="Ordino"
+      subject={document.meta.documentType}
+    >
+      {pages.map((nodes, pageIndex) => (
+        <Page
+          key={`page-${pageIndex}-${nodes[0]?.id ?? "empty"}`}
+          size={THEME.PAGE_SIZE}
+          style={PAGE_STYLE}
+          wrap
+        >
+          {pageIndex === 0 ? (
             <Text
               style={{
                 fontSize: THEME.FONT_SIZES.title,
@@ -98,8 +109,8 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
               {title}
             </Text>
           ) : null}
-          {nodes.map((n) => renderNode(n))}
-          <PageFooter pageNumber={pi + 1} title={title} />
+          {nodes.map((node) => renderNode(node))}
+          <PageFooter pageNumber={pageIndex + 1} title={title} />
         </Page>
       ))}
     </Document>

@@ -1,26 +1,193 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #efe6dc;
+  --foreground: #3d2918;
+  --surface: #f3ebe3;
+  --surface-raised: #f7f1ea;
+  --surface-hover: #e6d5c4;
+  --border: #c4a882;
+  --border-subtle: #d9c4ae;
+  --muted: #7f5539;
+  --muted-dim: #9a7358;
+  --accent: #7f5539;
+  --accent-dim: #a67c5a;
+  --accent-soft: rgba(127, 85, 57, 0.14);
+  --primary: #efe6dc;
+  --primary-foreground: #7f5539;
+  --brand: #7f5539;
+  --danger: #b42318;
+  --warning: #b54708;
+  --success: #3b7c3a;
+  --composer: #f3ebe3;
+  --preview-chrome: #e6d5c4;
+  --preview-frame: #c4a882;
+  --rail-width: 5rem;
+  --panel-width: 22rem;
+  color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-muted: var(--muted);
+  --color-muted-dim: var(--muted-dim);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-soft: var(--accent-soft);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-composer: var(--composer);
+  --color-preview-chrome: var(--preview-chrome);
+  --color-preview-frame: var(--preview-frame);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-comfortaa);
+  --radius-none: 0;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * Paper grain from the portfolio sample:
+ * soft fiber noise on the field, heavier stipple punched through ink.
+ */
+:root {
+  /* Soft, fine paper fiber — low contrast, organic clumping */
+  --paper-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.22 0 0 0 0 0.2 0 0 0 0 0.18 0 0 0 0.42 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* High-contrast stipple for printed/stamped ink (wordmarks) */
+  --ink-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='i'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.42 0 0 0 0.85 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23i)'/%3E%3C/svg%3E");
+  --paper-grain-size: 200px 200px;
+}
+
+html {
+  background-color: var(--background);
 }
 
 body {
-  background: var(--background);
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+  background-image: var(--paper-grain);
+  background-size: var(--paper-grain-size);
+  background-repeat: repeat;
+  background-blend-mode: multiply;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+}
+
+/* Film grain overlay — same paper tooth across the whole UI */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.32;
+  background-image: var(--paper-grain);
+  background-size: 240px 240px;
+  mix-blend-mode: soft-light;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+textarea {
+  font: inherit;
+}
+
+/* Comfortaa — same rounded display face as the portfolio sample */
+.font-display {
+  font-family: var(--font-comfortaa), ui-rounded, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+/* Heavy ink stipple through brand type — same printed feel as the sample */
+.brand-wordmark,
+.brand-wordmark-solid {
+  font-family: var(--font-comfortaa), ui-rounded, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-transform: lowercase;
+  color: transparent;
+  background-color: var(--brand);
+  background-image: var(--ink-grain);
+  background-size: 120px 120px;
+  background-blend-mode: soft-light;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.28s ease-out both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+.glass-panel {
+  border: 1px solid color-mix(in oklab, white 40%, var(--border) 60%);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in oklab, white 55%, transparent),
+      color-mix(in oklab, white 18%, transparent) 45%,
+      color-mix(in oklab, var(--surface) 70%, transparent)
+    ), color-mix(in oklab, var(--surface-raised) 72%, transparent);
+  background-blend-mode: soft-light, normal;
+  box-shadow:
+    0 20px 50px color-mix(in oklab, #3d2918 18%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 55%, transparent);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  /* Keep glass panel rounded even if local utilities conflict */
+  border-radius: 32px !important;
 }

@@ -1,14 +1,16 @@
-const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
-
 import type {
   InternalRenderResult,
   RasterizedPage,
 } from "../../contracts/rendering";
 
-declare const require: any;
+declare const require: (id: string) => any;
 
-if (pdfjs && pdfjs.GlobalWorkerOptions)
+// pdfjs legacy build has no TS declarations in this environment
+const pdfjs: any = require("pdfjs-dist/legacy/build/pdf.js");
+
+if (pdfjs?.GlobalWorkerOptions) {
   pdfjs.GlobalWorkerOptions.workerSrc = "";
+}
 
 export async function rasterizePdf(
   render: InternalRenderResult,
@@ -39,11 +41,10 @@ export async function rasterizePdf(
 
       const page = await pdf.getPage(i);
 
-      // Extract text content
       try {
         const textContent = await page.getTextContent();
         const text = textContent.items
-          .map((item: any) => item.str ?? "")
+          .map((item: { str?: string }) => item.str ?? "")
           .join(" ");
         pageTexts.push(text);
       } catch {
@@ -56,7 +57,7 @@ export async function rasterizePdf(
       let createCanvas: any;
       try {
         createCanvas = require("canvas").createCanvas;
-      } catch (e) {
+      } catch {
         return {
           success: false,
           error: {
@@ -88,16 +89,15 @@ export async function rasterizePdf(
       });
     }
 
-    // Attach pageTexts to the render result for validation
     render.pageTexts = pageTexts;
 
     return { success: true, data: pages };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
       error: {
         code: "RASTERIZATION_FAILED",
-        message: String(err),
+        message: err instanceof Error ? err.message : String(err),
         retryable: false,
       },
     };
