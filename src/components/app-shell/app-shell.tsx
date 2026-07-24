@@ -14,14 +14,15 @@ function ShellLayout() {
 
   return (
     <div className="relative flex h-dvh overflow-hidden bg-transparent">
-      <div
+      <nav
+        aria-label="Chat navigation"
         className="relative z-30 ml-5 mt-5 mb-5 flex shrink-0 items-stretch"
         onMouseEnter={() => setHistoryOpen(true)}
         onMouseLeave={() => setHistoryOpen(false)}
       >
         <LeftRail />
         <ChatHistorySidebar open={historyOpen} />
-      </div>
+      </nav>
       <div className="relative flex min-w-0 flex-1 flex-row overflow-hidden">
         <ChatPanel />
         <DiagnosticsStrip />
