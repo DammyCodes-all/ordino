@@ -372,13 +372,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         abortRef.current = null;
       }
     },
-    [
-      cloudDisclosureAccepted,
-      generationBlocked,
-      pushEvent,
-      referenceImages,
-      turn.running,
-    ],
+    [cloudDisclosureAccepted, pushEvent, referenceImages, turn.running],
   );
 
   const undo = useCallback(() => {
@@ -496,7 +490,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       previewOpen,
       health,
       diagnosticChecks,
-      generationBlocked,
       stageLabel,
       actionsDisabled,
       acceptDisclosure,
