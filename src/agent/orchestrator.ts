@@ -67,7 +67,7 @@ export class AgentOrchestrator implements AgentPort {
 
       // 1. Planning (if initial generation)
       if (isInitialGen) {
-        this.emit("planning", "Starting document planning");
+        this.emit("planning", "Planning document structure (1 model call)…");
         const planRes = await planDocument(this.client, input, this.dependencies.document);
         if (!planRes.success) {
           return createErrorResult(
@@ -78,6 +78,10 @@ export class AgentOrchestrator implements AgentPort {
           ) as any;
         }
         documentPlan = planRes.data;
+        this.emit(
+          "planning",
+          `Plan ready: ${documentPlan.sections.length} section${documentPlan.sections.length === 1 ? "" : "s"} — ${documentPlan.summary.slice(0, 120)}`,
+        );
         this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
       } else {
         // Create user_turn checkpoint before first follow-up mutation
@@ -89,7 +93,10 @@ export class AgentOrchestrator implements AgentPort {
       }
 
       // 2. Generating (Writer loop)
-      this.emit("generating", "Generating document content");
+      this.emit(
+        "generating",
+        "Writing document — each step is a model call (can take a while)…",
+      );
       const toolExec = new ToolExecutor(this.dependencies.document);
 
       const writerResult = await runWriterLoop(
@@ -102,6 +109,7 @@ export class AgentOrchestrator implements AgentPort {
         toolExec,
         input.userMessage,
         input.signal,
+        (message) => this.emit("generating", message),
       );
 
       if (!writerResult.success) {
@@ -206,6 +214,7 @@ export class AgentOrchestrator implements AgentPort {
           finalVisualReview?.issues ?? [],
           toolExec,
           input.signal,
+          (message) => this.emit("revising", message),
         );
         if (revisionResult.success) {
           currentDoc = revisionResult.data.document;

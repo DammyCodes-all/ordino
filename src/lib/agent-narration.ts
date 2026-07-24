@@ -24,10 +24,10 @@ export function narrateWorkflowEvent(event: WorkflowEvent): string | null {
   if (event.level === "error") {
     return event.message.slice(0, 280);
   }
-  const canned = STAGE_CHAT[event.stage];
-  if (canned) return canned;
+  // Prefer the live event message so writer/review step progress is visible.
   const message = event.message.trim();
-  return message ? message.slice(0, 280) : null;
+  if (message) return message.slice(0, 280);
+  return STAGE_CHAT[event.stage] ?? null;
 }
 
 export function appendNarration(existing: string, line: string): string {

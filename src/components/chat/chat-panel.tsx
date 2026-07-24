@@ -38,10 +38,10 @@ export function ChatPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: stageLabel/turn.running intentionally retrigger scroll
+  // biome-ignore lint/correctness/useExhaustiveDependencies: progress events should keep the live turn in view
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, turn.running, stageLabel]);
+  }, [messages, turn.running, stageLabel, turn.stage]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: draft drives textarea autosize
   useEffect(() => {
