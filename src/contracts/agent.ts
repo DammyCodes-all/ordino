@@ -1,0 +1,91 @@
+import { z } from "zod";
+import type { DocumentPort } from "./commands";
+import {
+  documentCheckpointSchema,
+  documentStateSchema,
+  type DocumentState,
+} from "./document";
+import type { GoogleAIConfiguration } from "./google-ai";
+import {
+  conversationMessageSchema,
+  referenceImageSchema,
+} from "./persistence";
+import {
+  internalRenderResultSchema,
+  type InternalRenderResult,
+  type PdfPort,
+} from "./rendering";
+import { appErrorSchema, type AppResult } from "./result";
+import { validationReportSchema, type ValidationReport } from "./validation";
+import { visualReviewResultSchema } from "./review";
+import type { WorkflowEvent } from "./workflow";
+
+export const agentTurnInputDataSchema = z
+  .object({
+    userMessage: z.string().trim().min(1).max(20_000),
+    document: documentStateSchema,
+    conversation: z.array(conversationMessageSchema),
+    referenceImages: z.array(referenceImageSchema),
+  })
+  .strict();
+
+export type AgentTurnInputData = z.infer<typeof agentTurnInputDataSchema>;
+
+export interface AgentTurnInput extends AgentTurnInputData {
+  signal?: AbortSignal;
+}
+
+export const agentTurnOutputSchema = z
+  .object({
+    document: documentStateSchema,
+    createdCheckpoints: z.array(documentCheckpointSchema),
+    finalRender: internalRenderResultSchema,
+    validation: validationReportSchema,
+    visualReview: visualReviewResultSchema.nullable(),
+    reviewIterations: z.union([
+      z.literal(0),
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+    ]),
+    assistantMessage: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+
+export const agentTurnRecoverySchema = z
+  .object({
+    document: documentStateSchema,
+    createdCheckpoints: z.array(documentCheckpointSchema),
+    lastValidRender: internalRenderResultSchema.nullable(),
+  })
+  .strict();
+
+export const agentTurnErrorSchema = appErrorSchema
+  .extend({ recovery: agentTurnRecoverySchema })
+  .strict();
+
+export type AgentTurnOutput = z.infer<typeof agentTurnOutputSchema>;
+export type AgentTurnRecovery = z.infer<typeof agentTurnRecoverySchema>;
+export type AgentTurnError = z.infer<typeof agentTurnErrorSchema>;
+
+export interface AgentRuntimeDependencies {
+  document: DocumentPort;
+  pdf: PdfPort;
+  validateDocument(document: DocumentState): ValidationReport;
+  validatePdf(
+    document: DocumentState,
+    render: InternalRenderResult,
+  ): Promise<ValidationReport>;
+  onEvent(event: WorkflowEvent): void;
+}
+
+export interface AgentPort {
+  runTurn(
+    input: AgentTurnInput,
+  ): Promise<AppResult<AgentTurnOutput, AgentTurnError>>;
+}
+
+export type CreateAgent = (
+  dependencies: AgentRuntimeDependencies,
+  configuration: GoogleAIConfiguration,
+) => AgentPort;
