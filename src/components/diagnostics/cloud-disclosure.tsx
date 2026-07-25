@@ -41,7 +41,8 @@ export function CloudDisclosure() {
             <code className="rounded-md bg-background px-1.5 py-1 font-mono text-xs text-accent sm:text-sm">
               GOOGLE_GENERATIVE_AI_API_KEY
             </code>{" "}
-            (never a <code className="font-mono text-xs sm:text-sm">NEXT_PUBLIC_</code>{" "}
+            (never a{" "}
+            <code className="font-mono text-xs sm:text-sm">NEXT_PUBLIC_</code>{" "}
             key).
           </p>
         </div>

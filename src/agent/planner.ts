@@ -1,13 +1,13 @@
+import type { DocumentPort } from "@/contracts";
 import {
-  documentPlanSchema,
-  type DocumentPlan,
-  type AppResult,
   type AgentTurnInput,
+  type AppResult,
+  type DocumentPlan,
+  documentPlanSchema,
 } from "@/contracts";
 import type { GoogleAIClient } from "@/google-ai";
 import { generateStructuredOutput } from "@/google-ai";
 import { buildTurnContext } from "./context-builder";
-import type { DocumentPort } from "@/contracts";
 
 export async function planDocument(
   client: GoogleAIClient,

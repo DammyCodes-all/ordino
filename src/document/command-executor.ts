@@ -1,16 +1,19 @@
-import { AppResult } from "../contracts/result";
-import { DocumentState, DocumentCheckpoint } from "../contracts/document";
 import {
-  DocumentCommand,
-  CommandExecution,
-  MutationReceipt,
-  DocumentChangeSet,
+  type CommandExecution,
+  type DocumentChangeSet,
+  type DocumentCommand,
   documentCommandSchema,
+  MutationReceipt,
   newDocumentNodeSchema,
 } from "../contracts/commands";
-import { DocumentOutline } from "../contracts/outline";
-import { documentStateSchema } from "../contracts/document";
+import {
+  type DocumentCheckpoint,
+  type DocumentState,
+  documentStateSchema,
+} from "../contracts/document";
 import { checkpointIdSchema } from "../contracts/ids";
+import type { DocumentOutline } from "../contracts/outline";
+import type { AppResult } from "../contracts/result";
 
 const makeError = (code: string, message: string): AppResult<never> => ({
   success: false,
@@ -223,7 +226,14 @@ export function executeCommand(
     if (patch.title !== undefined) {
       doc.meta.title = patch.title;
     }
-    affectsPagination = false;
+    if (patch.pageSize !== undefined) {
+      doc.meta.pageSize = patch.pageSize;
+    }
+    if (patch.margin !== undefined) {
+      doc.meta.margin = patch.margin;
+    }
+    affectsPagination =
+      patch.pageSize !== undefined || patch.margin !== undefined;
   } else {
     return makeError("INVALID_NODE", "Unsupported command type");
   }
