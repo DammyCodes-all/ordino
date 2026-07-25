@@ -24,7 +24,9 @@ export function DiagnosticsStrip() {
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
-            <p className="text-sm font-medium sm:text-base">Startup diagnostics</p>
+            <p className="text-sm font-medium sm:text-base">
+              Startup diagnostics
+            </p>
             <p className="mt-1 text-xs text-muted-dim sm:text-sm">
               {health
                 ? `${health.provider} · ${health.modelId}`

@@ -1,10 +1,21 @@
-import type { GoogleAIConfiguration, ModelDiagnosticPort, AppResult } from "@/contracts";
-import { createSuccessResult, createErrorResult, mapErrorToAppError } from "./errors";
+import type {
+  AppResult,
+  GoogleAIConfiguration,
+  ModelDiagnosticPort,
+} from "@/contracts";
+import {
+  createErrorResult,
+  createSuccessResult,
+  mapErrorToAppError,
+} from "./errors";
 
 export interface GenerateOptions {
   prompt: string;
   systemPrompt?: string;
-  images?: Array<{ mimeType: "image/png" | "image/jpeg" | "image/webp"; dataUrl: string }>;
+  images?: Array<{
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    dataUrl: string;
+  }>;
   signal?: AbortSignal;
 }
 
@@ -62,7 +73,9 @@ export class GoogleAIClient {
     }
   }
 
-  async generateWithTools(options: GenerateWithToolsOptions): Promise<AppResult<GenerateWithToolsResult>> {
+  async generateWithTools(
+    options: GenerateWithToolsOptions,
+  ): Promise<AppResult<GenerateWithToolsResult>> {
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
@@ -94,7 +107,10 @@ export class GoogleAIClient {
     }
   }
 
-  async runDiagnosticAction(action: string, signal?: AbortSignal): Promise<AppResult<void>> {
+  async runDiagnosticAction(
+    action: string,
+    signal?: AbortSignal,
+  ): Promise<AppResult<void>> {
     try {
       const res = await fetch("/api/ai/diagnostics", {
         method: "POST",
@@ -118,13 +134,18 @@ export class GoogleAIClient {
   }
 }
 
-export function createModelDiagnosticPort(config: GoogleAIConfiguration): ModelDiagnosticPort {
+export function createModelDiagnosticPort(
+  config: GoogleAIConfiguration,
+): ModelDiagnosticPort {
   const client = new GoogleAIClient(config);
   return {
     checkApiKey: (signal) => client.runDiagnosticAction("check_key", signal),
-    checkAuthentication: (signal) => client.runDiagnosticAction("check_auth", signal),
-    checkService: (signal) => client.runDiagnosticAction("check_service", signal),
-    checkModelAvailable: (signal) => client.runDiagnosticAction("check_model", signal),
+    checkAuthentication: (signal) =>
+      client.runDiagnosticAction("check_auth", signal),
+    checkService: (signal) =>
+      client.runDiagnosticAction("check_service", signal),
+    checkModelAvailable: (signal) =>
+      client.runDiagnosticAction("check_model", signal),
     warmUpText: (signal) => client.runDiagnosticAction("warmup", signal),
     checkVision: (signal) => client.runDiagnosticAction("check_vision", signal),
   };
