@@ -51,7 +51,7 @@ export function DiagnosticsStrip() {
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
           {diagnosticChecks.map((check) => (
             <div
-              key={`${check.name}-${check.message}`}
+              key={check.name}
               className="min-w-0 flex-1 rounded-2xl border border-border-subtle bg-background px-3 py-3 sm:min-w-[14rem] sm:px-4"
             >
               <div className="flex items-center gap-2">

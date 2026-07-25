@@ -169,7 +169,6 @@ export function ChatPanel() {
                     <span className="size-2 rounded-full bg-accent" />
                   )}
                   {message.role === "user" ? "You" : "Ordino"}
-                  {isLiveAssistant ? " · working" : ""}
                 </p>
                 <div
                   className={`rounded-3xl px-5 py-4 text-base leading-relaxed whitespace-pre-wrap ${
@@ -179,12 +178,6 @@ export function ChatPanel() {
                   }`}
                 >
                   {message.text}
-                  {isLiveAssistant ? (
-                    <span
-                      className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-accent animate-pulse-soft"
-                      aria-hidden
-                    />
-                  ) : null}
                 </div>
               </article>
               );
