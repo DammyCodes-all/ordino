@@ -5,7 +5,7 @@ import {
   ArrowRight01Icon,
   SidebarRightIcon,
 } from "@hugeicons/core-free-icons";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSession } from "@/components/app-shell/session-context";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -31,13 +31,14 @@ export function ChatOutline() {
     liveToolCalls,
   } = useSession();
   const [expanded, setExpanded] = useState(true);
+  const liveKeyRef = useRef(0);
 
   const isRunning = turn.running;
   const liveAdds = liveToolCalls.filter((tc) => tc.action === "addNode");
   const hasLive = isRunning && liveAdds.length > 0;
   const displayOutline = hasLive
-    ? liveAdds.map((tc, i) => ({
-        id: tc.nodeId || `live-${i}`,
+    ? liveAdds.map((tc) => ({
+        id: tc.nodeId || `live-${liveKeyRef.current++}`,
         type: "paragraph" as const,
         preview:
           tc.label?.replace(/^[^:]*:\s*/, "").slice(0, 120) ||
