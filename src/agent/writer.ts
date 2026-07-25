@@ -1,14 +1,29 @@
 import { z } from "zod";
 import type {
-  DocumentState,
-  DocumentPlan,
   AppResult,
+  ConversationMessage,
+  DocumentPlan,
+  DocumentPort,
+  DocumentState,
   ToolCallEvent,
 } from "@/contracts";
-import { newDocumentNodeSchema, nodePositionSchema, nodeIdSchema } from "@/contracts";
-import { GoogleAIClient, generateStructuredOutput, type ToolDefinition, type ToolCallResult } from "@/google-ai";
-import { ToolExecutor } from "./tool-executor";
-import { buildRevisionPrompt, type CombinedRevisionContext } from "@/review/revision-context";
+import {
+  newDocumentNodeSchema,
+  nodeIdSchema,
+  nodePositionSchema,
+} from "@/contracts";
+import {
+  type GoogleAIClient,
+  generateStructuredOutput,
+  type ToolCallResult,
+  type ToolDefinition,
+} from "@/google-ai";
+import {
+  buildRevisionPrompt,
+  type CombinedRevisionContext,
+} from "@/review/revision-context";
+import { buildWriterSystemPrompt } from "./context-builder";
+import type { ToolExecutor } from "./tool-executor";
 
 const MAX_WRITER_STEPS = 10;
 
@@ -34,7 +49,8 @@ function coerceWriterActionJson(value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const action = { ...(value as Record<string, unknown>) };
   const position = action.position;
-  if (!position || typeof position !== "object" || Array.isArray(position)) return action;
+  if (!position || typeof position !== "object" || Array.isArray(position))
+    return action;
   const pos = { ...(position as Record<string, unknown>) };
   if ("kind" in pos) return action;
 
@@ -55,44 +71,68 @@ function coerceWriterActionJson(value: unknown): unknown {
 const thinkingField = z.string().min(1).max(200).optional();
 
 const writerActionSchemaRaw = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("addNode"),
-    thinking: thinkingField,
-    node: newDocumentNodeSchema,
-    position: nodePositionSchema,
-  }).strict(),
-  z.object({
-    action: z.literal("editNode"),
-    thinking: thinkingField,
-    nodeId: nodeIdSchema,
-    nodeType: z.enum(["heading", "paragraph", "list", "table", "quote", "callout", "divider"]),
-    patch: z.record(z.string(), z.unknown()),
-  }).strict(),
-  z.object({
-    action: z.literal("moveNode"),
-    thinking: thinkingField,
-    nodeId: nodeIdSchema,
-    position: nodePositionSchema,
-  }).strict(),
-  z.object({
-    action: z.literal("deleteNode"),
-    thinking: thinkingField,
-    nodeId: nodeIdSchema,
-  }).strict(),
-  z.object({
-    action: z.literal("readNode"),
-    thinking: thinkingField,
-    nodeId: nodeIdSchema,
-  }).strict(),
-  z.object({
-    action: z.literal("editMeta"),
-    thinking: thinkingField,
-    patch: z.object({ title: z.string().trim().min(1).max(200).optional() }).strict(),
-  }).strict(),
-  z.object({
-    action: z.literal("finalize"),
-    thinking: thinkingField,
-  }).strict(),
+  z
+    .object({
+      action: z.literal("addNode"),
+      thinking: thinkingField,
+      node: newDocumentNodeSchema,
+      position: nodePositionSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("editNode"),
+      thinking: thinkingField,
+      nodeId: nodeIdSchema,
+      nodeType: z.enum([
+        "heading",
+        "paragraph",
+        "list",
+        "table",
+        "quote",
+        "callout",
+        "divider",
+      ]),
+      patch: z.record(z.string(), z.unknown()),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("moveNode"),
+      thinking: thinkingField,
+      nodeId: nodeIdSchema,
+      position: nodePositionSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("deleteNode"),
+      thinking: thinkingField,
+      nodeId: nodeIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("readNode"),
+      thinking: thinkingField,
+      nodeId: nodeIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("editMeta"),
+      thinking: thinkingField,
+      patch: z
+        .object({ title: z.string().trim().min(1).max(200).optional() })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("finalize"),
+      thinking: thinkingField,
+    })
+    .strict(),
 ]);
 
 type WriterAction = z.infer<typeof writerActionSchemaRaw>;
@@ -113,11 +153,22 @@ function executeAction(
 ): { result: any; updatedDoc: DocumentState } {
   switch (action.action) {
     case "addNode":
-      return toolExecutor.addNode(currentDoc, { node: action.node, position: action.position });
+      return toolExecutor.addNode(currentDoc, {
+        node: action.node,
+        position: action.position,
+      });
     case "editNode":
-      return toolExecutor.editNode(currentDoc, { type: "edit_node", nodeId: action.nodeId, nodeType: action.nodeType, patch: action.patch } as any);
+      return toolExecutor.editNode(currentDoc, {
+        type: "edit_node",
+        nodeId: action.nodeId,
+        nodeType: action.nodeType,
+        patch: action.patch,
+      } as any);
     case "moveNode":
-      return toolExecutor.moveNode(currentDoc, { nodeId: action.nodeId, position: action.position });
+      return toolExecutor.moveNode(currentDoc, {
+        nodeId: action.nodeId,
+        position: action.position,
+      });
     case "deleteNode":
       return toolExecutor.deleteNode(currentDoc, { nodeId: action.nodeId });
     case "readNode":
@@ -129,32 +180,53 @@ function executeAction(
   }
 }
 
+function formatConversationHistory(
+  conversation: ConversationMessage[],
+): string {
+  if (conversation.length === 0) return "";
+  return conversation
+    .map((msg) => `${msg.role.toUpperCase()}: ${msg.text}`)
+    .join("\n\n");
+}
+
 function buildWriterPrompt(
   document: DocumentState,
   plan: DocumentPlan,
   history: string[],
   userMessage: string,
   readResults?: Map<string, any>,
+  conversation?: ConversationMessage[],
 ): string {
-  const outlineLines = document.nodes.map((n, i) =>
-    `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`
-  ).join("\n");
+  const outlineLines = document.nodes
+    .map(
+      (n, i) =>
+        `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`,
+    )
+    .join("\n");
 
-  const planSections = plan.sections.map((s, i) =>
-    `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`
-  ).join("\n");
+  const planSections = plan.sections
+    .map(
+      (s, i) =>
+        `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`,
+    )
+    .join("\n");
 
-  const historyBlock = history.length > 0
-    ? `\n[Tool call history]\n${history.join("\n")}`
-    : "";
+  const historyBlock =
+    history.length > 0 ? `\n[Tool call history]\n${history.join("\n")}` : "";
 
-  const readBlock = readResults && readResults.size > 0
-    ? `\n[Read node content]\n${Array.from(readResults.entries())
-        .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
-        .join("\n")}`
-    : "";
+  const readBlock =
+    readResults && readResults.size > 0
+      ? `\n[Read node content]\n${Array.from(readResults.entries())
+          .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
+          .join("\n")}`
+      : "";
 
-  return `${userMessage}
+  const conversationBlock =
+    conversation && conversation.length > 0
+      ? `\n[Prior Conversation]\n${formatConversationHistory(conversation)}\n\n`
+      : "";
+
+  return `${conversationBlock}${userMessage}
 
 [Document plan]
 ${plan.summary}
@@ -167,6 +239,8 @@ ${readBlock}
 [Available actions]
 ${WRITER_ACTION_EXAMPLES}
 
+Use editNode to modify existing content. Use readNode first to inspect a node before editing.
+Use addNode only for genuinely new sections. Use deleteNode to remove unwanted content.
 Write the document section by section based on the plan.${historyBlock}`;
 }
 
@@ -175,22 +249,35 @@ function buildBatchWriterPrompt(
   plan: DocumentPlan,
   userMessage: string,
   readResults?: Map<string, any>,
+  conversation?: ConversationMessage[],
 ): string {
-  const outlineLines = document.nodes.map((n, i) =>
-    `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`
-  ).join("\n");
+  const outlineLines = document.nodes
+    .map(
+      (n, i) =>
+        `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`,
+    )
+    .join("\n");
 
-  const planSections = plan.sections.map((s, i) =>
-    `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`
-  ).join("\n");
+  const planSections = plan.sections
+    .map(
+      (s, i) =>
+        `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`,
+    )
+    .join("\n");
 
-  const readBlock = readResults && readResults.size > 0
-    ? `\n[Read node content]\n${Array.from(readResults.entries())
-        .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
-        .join("\n")}`
-    : "";
+  const readBlock =
+    readResults && readResults.size > 0
+      ? `\n[Read node content]\n${Array.from(readResults.entries())
+          .map(([id, node]) => `  ${id}: ${JSON.stringify(node)}`)
+          .join("\n")}`
+      : "";
 
-  return `${userMessage}
+  const conversationBlock =
+    conversation && conversation.length > 0
+      ? `\n[Prior Conversation]\n${formatConversationHistory(conversation)}\n\n`
+      : "";
+
+  return `${conversationBlock}${userMessage}
 
 [Document plan]
 ${plan.summary}
@@ -200,11 +287,12 @@ ${planSections}
 ${outlineLines || "  (empty document)"}
 ${readBlock}
 
-Generate ALL remaining content for this document as a JSON array of actions.
-Each element must be a valid action object.
-Include full heading text and paragraph content inline in addNode actions.
-Complete every section from the plan.
-End the array with {"action":"finalize"} when all content is complete.
+Analyze the existing outline and the user's request.
+Use readNode to inspect nodes you need to modify, then editNode to patch them.
+Use addNode only for genuinely new sections.
+Use deleteNode to remove content the user wants removed.
+Output a JSON array of actions. Each element must be a valid action object.
+End the array with {"action":"finalize"} when the request is fulfilled.
 
 Available actions:
 ${WRITER_ACTION_EXAMPLES}`;
@@ -222,7 +310,9 @@ function formatActionResult(action: WriterAction, result: any): string {
     return `→ removed nodeId: "${action.nodeId}"`;
   }
   if (action.action === "editNode") {
-    const changedFields = action.patch ? Object.keys(action.patch).join(", ") : "";
+    const changedFields = action.patch
+      ? Object.keys(action.patch).join(", ")
+      : "";
     return `→ edited nodeId: "${action.nodeId}" (${changedFields || "style"})`;
   }
   if (action.action === "moveNode") {
@@ -231,12 +321,20 @@ function formatActionResult(action: WriterAction, result: any): string {
   return "succeeded";
 }
 
-function describeActionProgress(step: number, action: WriterAction, ok: boolean): string {
+function describeActionProgress(
+  step: number,
+  action: WriterAction,
+  ok: boolean,
+): string {
   const prefix = `Step ${step}/${MAX_WRITER_STEPS}`;
   if (!ok) return `${prefix}: ${action.action} failed`;
   switch (action.action) {
     case "addNode": {
-      const node = action.node as { type?: string; text?: string; level?: number };
+      const node = action.node as {
+        type?: string;
+        text?: string;
+        level?: number;
+      };
       const preview =
         typeof node.text === "string" && node.text.trim()
           ? ` “${node.text.trim().slice(0, 48)}${node.text.trim().length > 48 ? "…" : ""}”`
@@ -268,6 +366,8 @@ export async function runWriterLoop(
   onProgress?: (message: string) => void,
   onThinking?: (text: string) => void,
   onToolCall?: (event: ToolCallEvent) => void,
+  conversation?: ConversationMessage[],
+  documentPort?: DocumentPort,
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const history: string[] = [];
@@ -278,7 +378,11 @@ export async function runWriterLoop(
     if (signal?.aborted) {
       return {
         success: false,
-        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        error: {
+          code: "ABORTED" as any,
+          message: "Turn was aborted by user",
+          retryable: false,
+        },
       };
     }
     steps++;
@@ -286,20 +390,33 @@ export async function runWriterLoop(
       `Step ${steps}/${MAX_WRITER_STEPS}: asking model for next write action…`,
     );
 
-    const prompt = buildWriterPrompt(currentDoc, plan, history, userMessage, readResults);
+    const prompt = buildWriterPrompt(
+      currentDoc,
+      plan,
+      history,
+      userMessage,
+      readResults,
+      conversation,
+    );
+
+    const systemPrompt = documentPort
+      ? buildWriterSystemPrompt(currentDoc, documentPort, plan)
+      : 'You are Ordino, an AI document writer and editor. Output one action as JSON matching the provided schema. Every action MUST include a "thinking" field with a 1-sentence description of what you are doing. Prefer editing existing content over adding new content. Use readNode to inspect nodes before editing them.';
 
     const res = await generateStructuredOutput(
       client,
       {
         prompt,
-        systemPrompt: "You are Ordino, an AI document writer. Output one action as JSON matching the provided schema. Every action MUST include a \"thinking\" field with a 1-sentence description of what you are doing. Build the document section by section according to the plan.",
+        systemPrompt,
         signal,
       },
       writerActionSchema,
     );
 
     if (!res.success) {
-      onProgress?.(`Step ${steps}/${MAX_WRITER_STEPS}: model output failed validation`);
+      onProgress?.(
+        `Step ${steps}/${MAX_WRITER_STEPS}: model output failed validation`,
+      );
       return res;
     }
 
@@ -332,7 +449,9 @@ export async function runWriterLoop(
 
     // Emit tool call event
     if (onToolCall) {
-      const label = action.thinking || describeActionProgress(steps, action, !!r.result.success);
+      const label =
+        action.thinking ||
+        describeActionProgress(steps, action, !!r.result.success);
       onToolCall({
         action: action.action,
         nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
@@ -342,10 +461,14 @@ export async function runWriterLoop(
     }
 
     onProgress?.(describeActionProgress(steps, action, !!r.result.success));
-    history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
+    history.push(
+      `  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`,
+    );
   }
 
-  onProgress?.(`Reached max ${MAX_WRITER_STEPS} write steps — continuing to render`);
+  onProgress?.(
+    `Reached max ${MAX_WRITER_STEPS} write steps — continuing to render`,
+  );
   return {
     success: true,
     data: {
@@ -365,6 +488,8 @@ export async function runBatchWriterLoop(
   onProgress?: (message: string) => void,
   onThinking?: (text: string) => void,
   onToolCall?: (event: ToolCallEvent) => void,
+  conversation?: ConversationMessage[],
+  documentPort?: DocumentPort,
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const readResults = new Map<string, any>();
@@ -374,27 +499,57 @@ export async function runBatchWriterLoop(
     if (signal?.aborted) {
       return {
         success: false,
-        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        error: {
+          code: "ABORTED" as any,
+          message: "Turn was aborted by user",
+          retryable: false,
+        },
       };
     }
     batchAttempts++;
-    onProgress?.(`Batch ${batchAttempts}/${MAX_BATCH_ATTEMPTS}: generating all remaining content…`);
+    onProgress?.(
+      `Batch ${batchAttempts}/${MAX_BATCH_ATTEMPTS}: generating all remaining content…`,
+    );
 
-    const prompt = buildBatchWriterPrompt(currentDoc, plan, userMessage, readResults);
+    const prompt = buildBatchWriterPrompt(
+      currentDoc,
+      plan,
+      userMessage,
+      readResults,
+      conversation,
+    );
+
+    const systemPrompt = documentPort
+      ? buildWriterSystemPrompt(currentDoc, documentPort, plan)
+      : 'You are Ordino, an AI document writer and editor. Output a JSON array of actions. You have these tools: addNode, editNode, moveNode, deleteNode, readNode, finalize. Every action MUST include a "thinking" field with a 1-sentence description of what you are doing. Prefer editing existing content over adding new content. Use readNode to inspect nodes before editing them.';
 
     const res = await generateStructuredOutput(
       client,
       {
         prompt,
-        systemPrompt: "You are Ordino, an AI document writer. Output a JSON array of actions to build the remaining document content. Every action MUST include a \"thinking\" field with a 1-sentence description of what you are doing.",
+        systemPrompt,
         signal,
       },
       batchWriterActionSchema,
     );
 
     if (!res.success) {
-      onProgress?.(`Batch ${batchAttempts} failed — falling back to single-step…`);
-      return runWriterLoop(client, currentDoc, plan, toolExecutor, userMessage, signal, onProgress, onThinking, onToolCall);
+      onProgress?.(
+        `Batch ${batchAttempts} failed — falling back to single-step…`,
+      );
+      return runWriterLoop(
+        client,
+        currentDoc,
+        plan,
+        toolExecutor,
+        userMessage,
+        signal,
+        onProgress,
+        onThinking,
+        onToolCall,
+        conversation,
+        documentPort,
+      );
     }
 
     const actions = res.data;
@@ -404,7 +559,11 @@ export async function runBatchWriterLoop(
       if (signal?.aborted) {
         return {
           success: false,
-          error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+          error: {
+            code: "ABORTED" as any,
+            message: "Turn was aborted by user",
+            retryable: false,
+          },
         };
       }
 
@@ -426,7 +585,9 @@ export async function runBatchWriterLoop(
       }
 
       if (onToolCall) {
-        const label = action.thinking || describeActionProgress(batchAttempts, action, !!r.result.success);
+        const label =
+          action.thinking ||
+          describeActionProgress(batchAttempts, action, !!r.result.success);
         onToolCall({
           action: action.action,
           nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
@@ -435,7 +596,9 @@ export async function runBatchWriterLoop(
         });
       }
 
-      onProgress?.(describeActionProgress(batchAttempts, action, !!r.result.success));
+      onProgress?.(
+        describeActionProgress(batchAttempts, action, !!r.result.success),
+      );
     }
 
     if (finalized) {
@@ -448,10 +611,14 @@ export async function runBatchWriterLoop(
       };
     }
 
-    onProgress?.(`Batch ${batchAttempts} done — more content needed, trying next batch…`);
+    onProgress?.(
+      `Batch ${batchAttempts} done — more content needed, trying next batch…`,
+    );
   }
 
-  onProgress?.(`Reached max ${MAX_BATCH_ATTEMPTS} batch attempts — continuing to render`);
+  onProgress?.(
+    `Reached max ${MAX_BATCH_ATTEMPTS} batch attempts — continuing to render`,
+  );
   return {
     success: true,
     data: {
@@ -480,7 +647,11 @@ export async function runRevisionLoop(
     if (signal?.aborted) {
       return {
         success: false,
-        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        error: {
+          code: "ABORTED" as any,
+          message: "Turn was aborted by user",
+          retryable: false,
+        },
       };
     }
     steps++;
@@ -488,7 +659,11 @@ export async function runRevisionLoop(
       `Revision step ${steps}/${MAX_WRITER_STEPS}: asking model for a fix…`,
     );
 
-    const outline = currentDoc.nodes.map((n, i) => ({ id: n.id, index: i, type: n.type }));
+    const outline = currentDoc.nodes.map((n, i) => ({
+      id: n.id,
+      index: i,
+      type: n.type,
+    }));
     const context: CombinedRevisionContext = { validationIssues, visualIssues };
     let prompt = buildRevisionPrompt(context, outline);
 
@@ -500,14 +675,17 @@ export async function runRevisionLoop(
       client,
       {
         prompt,
-        systemPrompt: "You are a document revision assistant. Output one action per step. Every action MUST include a \"thinking\" field describing what you are fixing. Call finalize when done.",
+        systemPrompt:
+          'You are a document revision assistant. Output one action per step. Every action MUST include a "thinking" field describing what you are fixing. Call finalize when done.',
         signal,
       },
       writerActionSchema,
     );
 
     if (!res.success) {
-      onProgress?.(`Revision step ${steps}/${MAX_WRITER_STEPS}: model output failed`);
+      onProgress?.(
+        `Revision step ${steps}/${MAX_WRITER_STEPS}: model output failed`,
+      );
       return res;
     }
 
@@ -528,13 +706,19 @@ export async function runRevisionLoop(
     const r = executeAction(action, currentDoc, toolExecutor);
     if (r.result.success) {
       currentDoc = r.updatedDoc;
-      history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
+      history.push(
+        `  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`,
+      );
     } else {
-      history.push(`  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`);
+      history.push(
+        `  Step ${steps}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`,
+      );
     }
 
     if (onToolCall) {
-      const label = action.thinking || describeActionProgress(steps, action, !!r.result.success);
+      const label =
+        action.thinking ||
+        describeActionProgress(steps, action, !!r.result.success);
       onToolCall({
         action: action.action,
         nodeId: "nodeId" in action ? (action as any).nodeId : undefined,
@@ -562,11 +746,14 @@ function buildWriterTools(): ToolDefinition[] {
       parameters: {
         type: "object",
         properties: {
-          node: { type: "object", description: "The node to add (type, text, level, style, etc.)" },
+          node: {
+            type: "object",
+            description: "The node to add (type, text, level, style, etc.)",
+          },
           position: {
             type: "object",
             description:
-              "Position with kind: {\"kind\":\"end\"} | {\"kind\":\"before\",\"nodeId\":\"...\"} | {\"kind\":\"after\",\"nodeId\":\"...\"}",
+              'Position with kind: {"kind":"end"} | {"kind":"before","nodeId":"..."} | {"kind":"after","nodeId":"..."}',
             properties: {
               kind: { type: "string", enum: ["end", "before", "after"] },
               nodeId: { type: "string" },
@@ -584,8 +771,15 @@ function buildWriterTools(): ToolDefinition[] {
         type: "object",
         properties: {
           nodeId: { type: "string", description: "The ID of the node to edit" },
-          nodeType: { type: "string", description: "The node type: heading, paragraph, list, table, quote, callout, divider" },
-          patch: { type: "object", description: "Fields to update (text, level, style, etc.)" },
+          nodeType: {
+            type: "string",
+            description:
+              "The node type: heading, paragraph, list, table, quote, callout, divider",
+          },
+          patch: {
+            type: "object",
+            description: "Fields to update (text, level, style, etc.)",
+          },
         },
         required: ["nodeId", "nodeType"],
       },
@@ -600,7 +794,7 @@ function buildWriterTools(): ToolDefinition[] {
           position: {
             type: "object",
             description:
-              "Position with kind: {\"kind\":\"end\"} | {\"kind\":\"before\",\"nodeId\":\"...\"} | {\"kind\":\"after\",\"nodeId\":\"...\"}",
+              'Position with kind: {"kind":"end"} | {"kind":"before","nodeId":"..."} | {"kind":"after","nodeId":"..."}',
             properties: {
               kind: { type: "string", enum: ["end", "before", "after"] },
               nodeId: { type: "string" },
@@ -617,7 +811,10 @@ function buildWriterTools(): ToolDefinition[] {
       parameters: {
         type: "object",
         properties: {
-          nodeId: { type: "string", description: "The ID of the node to delete" },
+          nodeId: {
+            type: "string",
+            description: "The ID of the node to delete",
+          },
         },
         required: ["nodeId"],
       },
@@ -647,15 +844,34 @@ function buildWriterTools(): ToolDefinition[] {
 function toolCallToAction(tc: ToolCallResult): WriterAction | null {
   switch (tc.toolName) {
     case "addNode":
-      return { action: "addNode", node: (tc.args as any).node, position: (tc.args as any).position } as WriterAction;
+      return {
+        action: "addNode",
+        node: (tc.args as any).node,
+        position: (tc.args as any).position,
+      } as WriterAction;
     case "editNode":
-      return { action: "editNode", nodeId: (tc.args as any).nodeId, nodeType: (tc.args as any).nodeType, patch: (tc.args as any).patch } as WriterAction;
+      return {
+        action: "editNode",
+        nodeId: (tc.args as any).nodeId,
+        nodeType: (tc.args as any).nodeType,
+        patch: (tc.args as any).patch,
+      } as WriterAction;
     case "moveNode":
-      return { action: "moveNode", nodeId: (tc.args as any).nodeId, position: (tc.args as any).position } as WriterAction;
+      return {
+        action: "moveNode",
+        nodeId: (tc.args as any).nodeId,
+        position: (tc.args as any).position,
+      } as WriterAction;
     case "deleteNode":
-      return { action: "deleteNode", nodeId: (tc.args as any).nodeId } as WriterAction;
+      return {
+        action: "deleteNode",
+        nodeId: (tc.args as any).nodeId,
+      } as WriterAction;
     case "readNode":
-      return { action: "readNode", nodeId: (tc.args as any).nodeId } as WriterAction;
+      return {
+        action: "readNode",
+        nodeId: (tc.args as any).nodeId,
+      } as WriterAction;
     case "finalize":
       return { action: "finalize" } as WriterAction;
     default:
@@ -669,7 +885,9 @@ export async function runWriterLoopWithTools(
   plan: DocumentPlan,
   toolExecutor: ToolExecutor,
   signal?: AbortSignal,
-): Promise<AppResult<{ document: DocumentState; message: string; history: string[] }>> {
+): Promise<
+  AppResult<{ document: DocumentState; message: string; history: string[] }>
+> {
   let currentDoc: DocumentState = document;
   const tools = buildWriterTools();
   const history: string[] = [];
@@ -679,12 +897,21 @@ export async function runWriterLoopWithTools(
     if (signal?.aborted) {
       return {
         success: false,
-        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        error: {
+          code: "ABORTED" as any,
+          message: "Turn was aborted by user",
+          retryable: false,
+        },
       };
     }
     steps++;
 
-    const outline = currentDoc.nodes.map((n, i) => `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`).join("\n");
+    const outline = currentDoc.nodes
+      .map(
+        (n, i) =>
+          `  ${i}: [${n.type}] ${"text" in n ? String(n.text).slice(0, 80) : n.type}`,
+      )
+      .join("\n");
     const prompt = `Create the document content based on the plan.
 
 [Document plan]
@@ -697,7 +924,8 @@ Build the document section by section using the available tools.`;
 
     const res = await client.generateWithTools({
       prompt,
-      systemPrompt: "You are a document creation assistant. Use the available tools to build the document. When done, call finalize.",
+      systemPrompt:
+        "You are a document creation assistant. Use the available tools to build the document. When done, call finalize.",
       tools,
       toolChoice: "required",
       signal,
@@ -710,7 +938,11 @@ Build the document section by section using the available tools.`;
       history.push(`  Step ${steps}: no tool call — finalizing`);
       return {
         success: true,
-        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+        data: {
+          document: currentDoc,
+          message: `Document written in ${steps} steps.`,
+          history,
+        },
       };
     }
 
@@ -718,16 +950,26 @@ Build the document section by section using the available tools.`;
       history.push(`  Step ${steps}: finalized`);
       return {
         success: true,
-        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+        data: {
+          document: currentDoc,
+          message: `Document written in ${steps} steps.`,
+          history,
+        },
       };
     }
 
     const action = toolCallToAction(toolCall);
     if (!action) {
-      history.push(`  Step ${steps}: unknown tool "${toolCall.toolName}" — finalizing`);
+      history.push(
+        `  Step ${steps}: unknown tool "${toolCall.toolName}" — finalizing`,
+      );
       return {
         success: true,
-        data: { document: currentDoc, message: `Document written in ${steps} steps.`, history },
+        data: {
+          document: currentDoc,
+          message: `Document written in ${steps} steps.`,
+          history,
+        },
       };
     }
 
@@ -735,12 +977,18 @@ Build the document section by section using the available tools.`;
     if (r.result.success) {
       currentDoc = r.updatedDoc;
     }
-    history.push(`  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`);
+    history.push(
+      `  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`,
+    );
   }
 
   return {
     success: true,
-    data: { document: currentDoc, message: `Document written (reached max ${MAX_WRITER_STEPS} steps).`, history },
+    data: {
+      document: currentDoc,
+      message: `Document written (reached max ${MAX_WRITER_STEPS} steps).`,
+      history,
+    },
   };
 }
 
@@ -760,12 +1008,20 @@ export async function runRevisionLoopWithTools(
     if (signal?.aborted) {
       return {
         success: false,
-        error: { code: "ABORTED" as any, message: "Turn was aborted by user", retryable: false },
+        error: {
+          code: "ABORTED" as any,
+          message: "Turn was aborted by user",
+          retryable: false,
+        },
       };
     }
     steps++;
 
-    const outline = currentDoc.nodes.map((n, i) => ({ id: n.id, index: i, type: n.type }));
+    const outline = currentDoc.nodes.map((n, i) => ({
+      id: n.id,
+      index: i,
+      type: n.type,
+    }));
     const prompt = `You are revising a document based on review feedback.
 
 Current outline: ${JSON.stringify(outline)}
@@ -777,7 +1033,8 @@ Fix one issue at a time using the available tools. Call finalize when all issues
 
     const res = await client.generateWithTools({
       prompt,
-      systemPrompt: "You are a document revision assistant. Use the available tools to fix issues. Call finalize when done.",
+      systemPrompt:
+        "You are a document revision assistant. Use the available tools to fix issues. Call finalize when done.",
       tools,
       toolChoice: "required",
       signal,

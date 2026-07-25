@@ -1,15 +1,17 @@
 import type {
-  DocumentState,
-  DocumentPort,
-  ConversationMessage,
-  ReferenceImage,
   AgentTurnInput,
+  DocumentPlan,
+  DocumentPort,
+  DocumentState,
 } from "@/contracts";
 
 export interface RebuiltTurnContext {
   systemPrompt: string;
   userPrompt: string;
-  activeImages: Array<{ mimeType: "image/png" | "image/jpeg" | "image/webp"; dataUrl: string }>;
+  activeImages: Array<{
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    dataUrl: string;
+  }>;
 }
 
 export function buildTurnContext(
@@ -56,9 +58,14 @@ Call finalizeDocument when you have finished all document modifications.`;
   // Included only when starting initial generation (empty document or 0 nodes) with active references,
   // or when the current user message explicitly asks for images/references.
   const isInitialGen = input.document.nodes.length === 0;
-  const mentionsImages = /image|reference|figure|photo|picture/i.test(input.userMessage);
+  const mentionsImages = /image|reference|figure|photo|picture/i.test(
+    input.userMessage,
+  );
 
-  let activeImages: Array<{ mimeType: "image/png" | "image/jpeg" | "image/webp"; dataUrl: string }> = [];
+  let activeImages: Array<{
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    dataUrl: string;
+  }> = [];
 
   if ((isInitialGen || mentionsImages) && input.referenceImages.length > 0) {
     activeImages = input.referenceImages.map((img) => ({
@@ -72,4 +79,50 @@ Call finalizeDocument when you have finished all document modifications.`;
     userPrompt,
     activeImages,
   };
+}
+
+export function buildWriterSystemPrompt(
+  document: DocumentState,
+  documentPort: DocumentPort,
+  plan: DocumentPlan,
+): string {
+  const outline = documentPort.outline(document);
+
+  const planSections = plan.sections
+    .map(
+      (s, i) =>
+        `  ${i + 1}. "${s.heading}" — ${s.purpose} (paragraphs: ${s.estimatedParagraphs}, table: ${s.includeTable}, list: ${s.includeList})`,
+    )
+    .join("\n");
+
+  return `You are Ordino, an expert AI document writer and editor.
+Language: English-only.
+Rule: Do NOT invent node IDs. Every new node added must let the application generate the ID.
+
+[Document Metadata]
+Title: ${document.meta.title}
+Document Type: ${document.meta.documentType}
+Audience: ${document.meta.audience}
+Writing Style: ${document.meta.writingStyle}
+Instructions: ${document.meta.instructions ?? "None"}
+Page Limit: ${document.meta.pageLimit ?? "None"}
+
+[Document State]
+Document ID: ${document.documentId}
+Version: ${document.version}
+Review Revision: ${document.reviewRevision}
+
+[Current Outline]
+${JSON.stringify(outline, null, 2)}
+
+[Document Plan]
+${plan.summary}
+${planSections}
+
+[Tool Instructions]
+You have access to 7 tools: addNode, editNode, moveNode, deleteNode, readNode, editMeta, finalizeDocument.
+Prefer editing existing content over adding new content.
+Call readNode if you need the full content of a node before editing it.
+Use editNode to modify existing nodes. Use addNode only for genuinely new sections.
+Call finalizeDocument when you have finished all document modifications.`;
 }

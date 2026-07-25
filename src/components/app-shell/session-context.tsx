@@ -42,7 +42,6 @@ import {
   createModelDiagnosticPort,
   createSuccessResult,
 } from "@/google-ai";
-import { createId } from "@/lib/document-factory";
 import {
   appendNarration,
   narrateTurnFailure,
@@ -51,11 +50,12 @@ import {
   narrateWorkflowEvent,
 } from "@/lib/agent-narration";
 import {
+  loadWorkspace,
   type ChatHistoryEntry as PersistedHistoryEntry,
   type ChatSnapshot as PersistedSnapshot,
-  loadWorkspace,
   saveWorkspace,
 } from "@/lib/chat-persistence";
+import { createId } from "@/lib/document-factory";
 
 const INITIAL_DIAGNOSTIC_NAMES: DiagnosticName[] = [
   "api_key",
@@ -562,10 +562,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...message,
                     text: narrateTurnSuccess({
-                        liveText: "",
-                        title: result.data.document.meta.title,
-                        reviewIterations: result.data.reviewIterations,
-                      }),
+                      liveText: "",
+                      title: result.data.document.meta.title,
+                      reviewIterations: result.data.reviewIterations,
+                    }),
                   }
                 : message,
             ),
@@ -601,10 +601,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               message.id === liveAssistantId
                 ? {
                     ...message,
-                    text: narrateTurnFailure(
-                      "",
-                      STAGE_LABELS.cancelled,
-                    ),
+                    text: narrateTurnFailure("", STAGE_LABELS.cancelled),
                   }
                 : message,
             ),
@@ -676,9 +673,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const retry = useCallback(() => {
     if (turn.running || !lastError?.retryable) return;
-    const lastUserMsg = messagesRef.current.findLast(
-      (m) => m.role === "user",
-    );
+    const lastUserMsg = messagesRef.current.findLast((m) => m.role === "user");
     if (lastUserMsg) {
       void sendPrompt(lastUserMsg.text);
     }
