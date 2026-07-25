@@ -41,7 +41,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${comfortaa.variable} h-full antialiased`}
     >
-      <body className="flex min-h-dvh flex-col text-foreground">{children}</body>
+      <body className="flex min-h-dvh flex-col text-foreground">
+        {children}
+      </body>
     </html>
   );
 }

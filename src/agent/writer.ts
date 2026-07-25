@@ -32,7 +32,14 @@ const WRITER_ACTION_EXAMPLES = `Output exactly one JSON object per step (no mark
 {"action":"addNode","thinking":"Adding the document title as an H1 heading.","node":{"type":"heading","level":1,"text":"Title"},"position":{"kind":"end"}}
 {"action":"addNode","thinking":"Writing the opening paragraph to introduce the topic.","node":{"type":"paragraph","text":"Body text."},"position":{"kind":"end"}}
 {"action":"addNode","thinking":"Adding a bullet list of key points.","node":{"type":"list","ordered":false,"items":["One","Two"]},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a centered heading.","node":{"type":"heading","level":2,"text":"Section","style":{"alignment":"center"}},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Writing a bold, justified paragraph.","node":{"type":"paragraph","text":"Key finding.","style":{"emphasis":"bold","alignment":"justify"}},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a striped table with column widths.","node":{"type":"table","columns":[{"header":"Name","widthPercent":40},{"header":"Value","widthPercent":60}],"rows":[["A","1"],["B","2"]],"style":{"striped":true,"density":"compact"}},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a highlight callout.","node":{"type":"callout","title":"Note","text":"Important.","style":{"variant":"highlight"}},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a quote with attribution.","node":{"type":"quote","text":"Quoted text.","attribution":"Author","style":{"alignment":"center"}},"position":{"kind":"end"}}
+{"action":"addNode","thinking":"Adding a subtle divider.","node":{"type":"divider","style":{"variant":"subtle"}},"position":{"kind":"end"}}
 {"action":"editNode","thinking":"Updating the paragraph with more detail.","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Updated text"}}
+{"action":"editNode","thinking":"Centering a heading.","nodeId":"node_id","nodeType":"heading","patch":{"style":{"alignment":"center"}}}
 {"action":"moveNode","thinking":"Reordering to improve document flow.","nodeId":"node_id","position":{"kind":"before","nodeId":"other_id"}}
 {"action":"deleteNode","thinking":"Removing redundant content.","nodeId":"node_id"}
 {"action":"readNode","thinking":"Reading node content for context.","nodeId":"node_id"}
@@ -42,7 +49,18 @@ const WRITER_ACTION_EXAMPLES = `Output exactly one JSON object per step (no mark
 Position MUST use "kind" (never "anchor"):
 - {"kind":"end"}
 - {"kind":"before","nodeId":"..."}
-- {"kind":"after","nodeId":"..."}`;
+- {"kind":"after","nodeId":"..."}
+
+Style fields available per node type:
+- heading: alignment (left/center/right), spaceBefore, spaceAfter, color (#hex), fontSize (6-72)
+- paragraph: alignment (left/center/right/justify), emphasis (normal/bold/italic), spaceBefore, spaceAfter, color (#hex), fontSize (6-72)
+- list: compact (bool), spaceBefore, spaceAfter, color (#hex)
+- table: density (compact/comfortable), headerAlignment (left/center/right), striped (bool), spaceBefore, spaceAfter, color (#hex)
+- quote: alignment (left/center), spaceBefore, spaceAfter, color (#hex)
+- callout: variant (note/highlight/warning), spaceBefore, spaceAfter, color (#hex)
+- divider: variant (solid/subtle), spaceBefore, spaceAfter
+
+Use styles to improve visual hierarchy and readability.`;
 
 /** Models often invent { anchor } instead of { kind }; coerce common mistakes. */
 function coerceWriterActionJson(value: unknown): unknown {
