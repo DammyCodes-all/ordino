@@ -210,13 +210,13 @@ export function resolveDividerStyle(
   };
 }
 
-export function resolvePageSize(pageSize: string): string {
-  const map: Record<string, string> = {
+export function resolvePageSize(pageSize?: string): "A4" | "LETTER" | "LEGAL" {
+  const map: Record<string, "A4" | "LETTER" | "LEGAL"> = {
     letter: "LETTER",
     a4: "A4",
     legal: "LEGAL",
   };
-  return map[pageSize] ?? "A4";
+  return map[pageSize ?? "a4"] ?? "A4";
 }
 
 export interface PageMargin {
