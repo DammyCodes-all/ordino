@@ -562,10 +562,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...message,
                     text: narrateTurnSuccess({
-                      liveText: message.text,
-                      title: result.data.document.meta.title,
-                      reviewIterations: result.data.reviewIterations,
-                    }),
+                        liveText: "",
+                        title: result.data.document.meta.title,
+                        reviewIterations: result.data.reviewIterations,
+                      }),
                   }
                 : message,
             ),
@@ -602,7 +602,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...message,
                     text: narrateTurnFailure(
-                      message.text,
+                      "",
                       STAGE_LABELS.cancelled,
                     ),
                   }
@@ -635,7 +635,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...message,
                     text: narrateTurnFailure(
-                      message.text,
+                      "",
                       error.message.slice(0, 300) || STAGE_LABELS.failed,
                     ),
                   }
@@ -661,7 +661,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             item.id === liveAssistantId
               ? {
                   ...item,
-                  text: narrateTurnFailure(item.text, message.slice(0, 300)),
+                  text: narrateTurnFailure("", message.slice(0, 300)),
                 }
               : item,
           ),
