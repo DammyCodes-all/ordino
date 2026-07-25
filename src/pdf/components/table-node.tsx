@@ -6,6 +6,7 @@ import type {
 } from "../../contracts/document";
 import { resolveTableStyle, THEME } from "../professional-theme";
 
+type ViewStyle = React.ComponentProps<typeof View>["style"];
 type TableNodeData = Extract<DocumentNode, { type: "table" }>;
 
 function columnFlex(col: TableColumn, totalColumns: number): number {
@@ -14,11 +15,13 @@ function columnFlex(col: TableColumn, totalColumns: number): number {
 }
 
 export function TableNode({ node }: { node: TableNodeData }) {
-  const containerStyle = resolveTableStyle(node.style);
+  const { color, fontFamily, ...containerStyle } = resolveTableStyle(
+    node.style,
+  ) as Record<string, unknown>;
   const totalCols = node.columns.length;
 
   return (
-    <View style={containerStyle as any}>
+    <View style={containerStyle as ViewStyle}>
       <View
         style={{
           flexDirection: "row",
@@ -40,7 +43,7 @@ export function TableNode({ node }: { node: TableNodeData }) {
               style={{
                 fontWeight: 700,
                 fontSize: THEME.FONT_SIZES.body,
-                color: (containerStyle as any).color ?? THEME.COLORS.text,
+                color: (color as string | undefined) ?? THEME.COLORS.text,
                 textAlign: node.style.headerAlignment,
               }}
             >
@@ -74,8 +77,8 @@ export function TableNode({ node }: { node: TableNodeData }) {
               <Text
                 style={{
                   fontSize: THEME.FONT_SIZES.body,
-                  fontFamily: (containerStyle as any).fontFamily,
-                  color: (containerStyle as any).color ?? THEME.COLORS.text,
+                  fontFamily: fontFamily as string | undefined,
+                  color: (color as string | undefined) ?? THEME.COLORS.text,
                 }}
               >
                 {cell}

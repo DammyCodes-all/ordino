@@ -123,7 +123,7 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
       {pages.map((nodes, pageIndex) => (
         <Page
           key={`page-${pageIndex}-${nodes[0]?.id ?? "empty"}`}
-          size={pageSize as any}
+          size={pageSize}
           style={pageStyle}
           wrap
         >

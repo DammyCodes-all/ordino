@@ -10,7 +10,7 @@ export function registerFont(family: string, src: string): void {
     Font.register({ family, src });
     registeredFonts.add(key);
   } catch {
-    // Non-fatal: renderer will fallback to default fonts
+    console.warn(`Font "${family}" could not be registered from ${src}`);
   }
 }
 
@@ -25,6 +25,10 @@ export function registerFontsFromDocument(document: DocumentState): void {
     }
   }
   for (const family of families) {
+    if (/[\\/.]/.test(family)) {
+      console.warn(`Skipping font "${family}": name contains invalid characters`);
+      continue;
+    }
     registerFont(family, `fonts/${family}-Regular.ttf`);
   }
 }
