@@ -154,32 +154,32 @@ export function ChatPanel() {
                 index === messages.length - 1;
               if (isLiveAssistant) return null;
               return (
-              <article
-                key={message.id}
-                className={`animate-fade-up ${
-                  message.role === "user"
-                    ? chatNarrow
-                      ? "ml-8"
-                      : "ml-12 sm:ml-20"
-                    : "mr-2"
-                }`}
-              >
-                <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim flex items-center gap-2">
-                  {message.role === "assistant" && (
-                    <span className="size-2 rounded-full bg-accent" />
-                  )}
-                  {message.role === "user" ? "You" : "Ordino"}
-                </p>
-                <div
-                  className={`rounded-3xl px-5 py-4 text-base leading-relaxed whitespace-pre-wrap ${
+                <article
+                  key={message.id}
+                  className={`animate-fade-up ${
                     message.role === "user"
-                      ? "bg-surface-raised text-foreground"
-                      : "bg-surface/70 text-foreground/95"
+                      ? chatNarrow
+                        ? "ml-8"
+                        : "ml-12 sm:ml-20"
+                      : "mr-2"
                   }`}
                 >
-                  {message.text}
-                </div>
-              </article>
+                  <p className="mb-2 text-xs uppercase tracking-wider text-muted-dim flex items-center gap-2">
+                    {message.role === "assistant" && (
+                      <span className="size-2 rounded-full bg-accent" />
+                    )}
+                    {message.role === "user" ? "You" : "Ordino"}
+                  </p>
+                  <div
+                    className={`rounded-3xl px-5 py-4 text-base leading-relaxed whitespace-pre-wrap ${
+                      message.role === "user"
+                        ? "bg-surface-raised text-foreground"
+                        : "bg-surface/70 text-foreground/95"
+                    }`}
+                  >
+                    {message.text}
+                  </div>
+                </article>
               );
             })}
             {turn.running && agentNarration ? (
@@ -189,11 +189,19 @@ export function ChatPanel() {
                   Ordino · working
                 </p>
                 <div className="rounded-3xl bg-surface/70 px-5 py-4 text-base leading-relaxed text-foreground/95">
-                  {agentNarration.split("\n").filter(Boolean).map((step, i) => (
-                    <div key={i} className={i > 0 ? "mt-3 border-t border-border-subtle pt-3" : ""}>
-                      {step}
-                    </div>
-                  ))}
+                  {agentNarration
+                    .split("\n")
+                    .filter(Boolean)
+                    .map((step, i) => (
+                      <div
+                        key={i}
+                        className={
+                          i > 0 ? "mt-3 border-t border-border-subtle pt-3" : ""
+                        }
+                      >
+                        {step}
+                      </div>
+                    ))}
                 </div>
               </article>
             ) : null}

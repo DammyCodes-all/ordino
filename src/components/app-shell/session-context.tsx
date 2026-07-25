@@ -149,6 +149,8 @@ function createBlankDocument() {
     writingStyle: "professional",
     instructions: null,
     pageLimit: null,
+    pageSize: "a4",
+    header: { enabled: false, skipFirstPage: true },
   });
 }
 
@@ -351,6 +353,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       writingStyle: "professional",
       instructions: null,
       pageLimit: null,
+      pageSize: "a4",
+      header: { enabled: false, skipFirstPage: true },
     });
 
     try {

@@ -1,18 +1,18 @@
 import type {
+  AddNodeReceipt,
+  AppResult,
   DocumentPort,
   DocumentState,
-  AppResult,
-  AddNodeReceipt,
+  FinalizeReceipt,
   MutationReceipt,
   ReadNodeReceipt,
-  FinalizeReceipt,
 } from "@/contracts";
 import { createSuccessResult } from "@/google-ai";
 import type {
   AddNodeToolInput,
+  DeleteNodeToolInput,
   EditNodeToolInput,
   MoveNodeToolInput,
-  DeleteNodeToolInput,
   ReadNodeToolInput,
 } from "./tool-definitions";
 
@@ -30,9 +30,10 @@ export class ToolExecutor {
     });
 
     if (res.success) {
-      const receipt = "nodeId" in res.data.receipt
-        ? res.data.receipt
-        : { ...res.data.receipt, nodeId: "" };
+      const receipt =
+        "nodeId" in res.data.receipt
+          ? res.data.receipt
+          : { ...res.data.receipt, nodeId: "" };
       return {
         result: createSuccessResult(receipt as AddNodeReceipt),
         updatedDoc: res.data.document,
@@ -119,9 +120,10 @@ export class ToolExecutor {
     return { result: res, updatedDoc: doc };
   }
 
-  finalizeDocument(
-    doc: DocumentState,
-  ): { result: AppResult<FinalizeReceipt>; updatedDoc: DocumentState } {
+  finalizeDocument(doc: DocumentState): {
+    result: AppResult<FinalizeReceipt>;
+    updatedDoc: DocumentState;
+  } {
     return {
       result: createSuccessResult({
         finalized: true,
