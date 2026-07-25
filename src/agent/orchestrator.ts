@@ -339,17 +339,12 @@ export class AgentOrchestrator implements AgentPort {
         }
 
         // 7. Revising
-        reviewIterations++;
-        if (reviewIterations >= 1) {
-          this.narrate(
-            "Reached maximum revision passes — delivering best version.",
-          );
-          break; // Maximum iterations reached
-        }
-
-        this.emit("revising", `Executing revision pass ${reviewIterations}`);
+        this.emit(
+          "revising",
+          `Executing revision pass ${reviewIterations + 1}`,
+        );
         this.narrate(
-          `Revision pass ${reviewIterations}: fixing identified issues…`,
+          `Revision pass ${reviewIterations + 1}: fixing identified issues…`,
         );
         const prep = await prepareReviewCheckpoint(
           currentDoc,
@@ -380,6 +375,15 @@ export class AgentOrchestrator implements AgentPort {
           );
           this.emit("revising", "Revision loop failed", "warning");
         }
+
+        reviewIterations++;
+        if (reviewIterations >= 1) {
+          this.narrate(
+            "Reached maximum revision passes — delivering best version.",
+          );
+          break;
+        }
+
         this.checkAborted(
           input.signal,
           currentDoc,

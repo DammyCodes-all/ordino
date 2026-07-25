@@ -52,7 +52,11 @@ function coerceWriterActionJson(value: unknown): unknown {
   if (!position || typeof position !== "object" || Array.isArray(position))
     return action;
   const pos = { ...(position as Record<string, unknown>) };
-  if ("kind" in pos) return action;
+  if ("kind" in pos) {
+    delete pos.anchor;
+    action.position = pos;
+    return action;
+  }
 
   const anchor = typeof pos.anchor === "string" ? pos.anchor : null;
   const nodeId =
@@ -60,7 +64,7 @@ function coerceWriterActionJson(value: unknown): unknown {
     (typeof pos.referenceNodeId === "string" && pos.referenceNodeId) ||
     null;
 
-  if (anchor === "end" || anchor === "last" || anchor === "first") {
+  if (anchor === "end" || anchor === "last") {
     action.position = { kind: "end" };
   } else if ((anchor === "before" || anchor === "after") && nodeId) {
     action.position = { kind: anchor, nodeId };
@@ -250,6 +254,7 @@ function buildBatchWriterPrompt(
   userMessage: string,
   readResults?: Map<string, any>,
   conversation?: ConversationMessage[],
+  batchHistory?: string[],
 ): string {
   const outlineLines = document.nodes
     .map(
@@ -277,6 +282,11 @@ function buildBatchWriterPrompt(
       ? `\n[Prior Conversation]\n${formatConversationHistory(conversation)}\n\n`
       : "";
 
+  const historyBlock =
+    batchHistory && batchHistory.length > 0
+      ? `\n[Previous batch actions]\n${batchHistory.join("\n")}`
+      : "";
+
   return `${conversationBlock}${userMessage}
 
 [Document plan]
@@ -286,6 +296,7 @@ ${planSections}
 [Current outline]
 ${outlineLines || "  (empty document)"}
 ${readBlock}
+${historyBlock}
 
 Analyze the existing outline and the user's request.
 Use readNode to inspect nodes you need to modify, then editNode to patch them.
@@ -317,6 +328,10 @@ function formatActionResult(action: WriterAction, result: any): string {
   }
   if (action.action === "moveNode") {
     return `→ moved nodeId: "${action.nodeId}"`;
+  }
+  if (action.action === "editMeta") {
+    const fields = action.patch ? Object.keys(action.patch).join(", ") : "meta";
+    return `→ edited ${fields}`;
   }
   return "succeeded";
 }
@@ -429,6 +444,13 @@ export async function runWriterLoop(
 
     if (action.action === "finalize") {
       history.push(`  Step ${steps}: finalized`);
+      if (onToolCall) {
+        onToolCall({
+          action: "finalize",
+          label: action.thinking || "Document is complete",
+          documentVersion: currentDoc.version,
+        });
+      }
       onProgress?.(describeActionProgress(steps, action, true));
       return {
         success: true,
@@ -493,6 +515,7 @@ export async function runBatchWriterLoop(
 ): Promise<AppResult<{ document: DocumentState; message: string }>> {
   let currentDoc = document;
   const readResults = new Map<string, any>();
+  const batchHistory: string[] = [];
   let batchAttempts = 0;
 
   while (batchAttempts < MAX_BATCH_ATTEMPTS) {
@@ -517,6 +540,7 @@ export async function runBatchWriterLoop(
       userMessage,
       readResults,
       conversation,
+      batchHistory,
     );
 
     const systemPrompt = documentPort
@@ -573,6 +597,13 @@ export async function runBatchWriterLoop(
 
       if (action.action === "finalize") {
         finalized = true;
+        if (onToolCall) {
+          onToolCall({
+            action: "finalize",
+            label: action.thinking || "Document is complete",
+            documentVersion: currentDoc.version,
+          });
+        }
         continue;
       }
 
@@ -582,6 +613,13 @@ export async function runBatchWriterLoop(
         if (action.action === "readNode" && r.result.data?.node) {
           readResults.set(action.nodeId, r.result.data.node);
         }
+        batchHistory.push(
+          `  Batch ${batchAttempts}: ${action.action} ${formatActionResult(action, r.result)}`,
+        );
+      } else {
+        batchHistory.push(
+          `  Batch ${batchAttempts}: ${action.action} FAILED — ${r.result?.error?.message || "unknown error"}`,
+        );
       }
 
       if (onToolCall) {
@@ -641,6 +679,7 @@ export async function runRevisionLoop(
 ): Promise<AppResult<{ document: DocumentState }>> {
   let currentDoc = document;
   const history: string[] = [];
+  const readResults = new Map<string, any>();
   let steps = 0;
 
   while (steps < MAX_WRITER_STEPS) {
@@ -659,13 +698,8 @@ export async function runRevisionLoop(
       `Revision step ${steps}/${MAX_WRITER_STEPS}: asking model for a fix…`,
     );
 
-    const outline = currentDoc.nodes.map((n, i) => ({
-      id: n.id,
-      index: i,
-      type: n.type,
-    }));
     const context: CombinedRevisionContext = { validationIssues, visualIssues };
-    let prompt = buildRevisionPrompt(context, outline);
+    let prompt = buildRevisionPrompt(context, currentDoc, readResults);
 
     if (history.length > 0) {
       prompt += `\n\n[Revision history]\n${history.join("\n")}`;
@@ -696,6 +730,13 @@ export async function runRevisionLoop(
     }
 
     if (action.action === "finalize") {
+      if (onToolCall) {
+        onToolCall({
+          action: "finalize",
+          label: action.thinking || "Revision complete",
+          documentVersion: currentDoc.version,
+        });
+      }
       onProgress?.(describeActionProgress(steps, action, true));
       return {
         success: true,
@@ -706,6 +747,9 @@ export async function runRevisionLoop(
     const r = executeAction(action, currentDoc, toolExecutor);
     if (r.result.success) {
       currentDoc = r.updatedDoc;
+      if (action.action === "readNode" && r.result.data?.node) {
+        readResults.set(action.nodeId, r.result.data.node);
+      }
       history.push(
         `  Step ${steps}: ${action.action} ${formatActionResult(action, r.result)}`,
       );

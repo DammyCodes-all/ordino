@@ -1,19 +1,19 @@
 import { z } from "zod";
 import {
-  rawVisualReviewSchema,
-  visualReviewResultSchema,
-  type RawVisualReview,
-  type VisualReviewResult,
-  type VisualIssue,
-  type RasterizedPage,
-  type DocumentOutline,
-  type DocumentMeta,
-  type ValidationIssue,
   type AppResult,
+  type DocumentMeta,
+  type DocumentOutline,
   nodeIdSchema,
+  type RasterizedPage,
+  type RawVisualReview,
+  rawVisualReviewSchema,
+  type ValidationIssue,
+  type VisualIssue,
+  type VisualReviewResult,
+  visualReviewResultSchema,
 } from "@/contracts";
 import type { GoogleAIClient } from "@/google-ai";
-import { generateStructuredOutput, createSuccessResult } from "@/google-ai";
+import { createSuccessResult, generateStructuredOutput } from "@/google-ai";
 
 export async function runVisualReview(
   client: GoogleAIClient,
@@ -81,9 +81,13 @@ export function normalizeVisualReview(
 
   const issues: VisualIssue[] = raw.issues
     .filter((issue) => issue.pageNumber >= 1 && issue.pageNumber <= pageCount)
+    .filter((issue) => Math.max(0, Math.min(1, issue.confidence)) >= 0.3)
     .map((issue) => {
       let resolvedNodeId = null;
-      if (issue.reportedNodeId && validNodeIds.has(issue.reportedNodeId as any)) {
+      if (
+        issue.reportedNodeId &&
+        validNodeIds.has(issue.reportedNodeId as any)
+      ) {
         resolvedNodeId = nodeIdSchema.parse(issue.reportedNodeId);
       }
 
