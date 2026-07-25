@@ -128,12 +128,12 @@ Call finalize when you have finished all document modifications.
 
 [Style Options]
 Nodes accept optional style fields for visual control:
-- heading: alignment(left/center/right), spaceBefore/After(none/xs/sm/md/lg), color(#hex), fontSize(6-72)
-- paragraph: alignment(left/center/right/justify), emphasis(normal/bold/italic), spaceBefore/After, color, fontSize
-- list: compact(bool), spaceBefore/After, color
-- table: density(compact/comfortable), headerAlignment, striped(bool), spaceBefore/After, color
-- quote: alignment(left/center), spaceBefore/After, color
-- callout: variant(note/highlight/warning), spaceBefore/After, color
-- divider: variant(solid/subtle), spaceBefore/After
+- heading: alignment(left/center/right), spaceBefore/After(none/xs/sm/md/lg), color(#hex), fontSize(6-72), fontFamily
+- paragraph: alignment(left/center/right/justify), emphasis(normal/bold/italic), spaceBefore/After, color, fontSize, fontFamily
+- list: compact(bool), spaceBefore/After, color, fontFamily
+- table: density(compact/comfortable), headerAlignment, striped(bool), spaceBefore/After, color, fontFamily
+- quote: alignment(left/center), spaceBefore/After, color, fontFamily
+- callout: variant(note/highlight/warning), spaceBefore/After, color, fontFamily
+- divider: variant(solid/subtle), spaceBefore/After, color
 Use styles to improve visual hierarchy and readability.`;
 }
