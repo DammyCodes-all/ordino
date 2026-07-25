@@ -24,6 +24,21 @@ export const alignmentSchema = z.enum(["left", "center", "right", "justify"]);
 export const nonJustifiedAlignmentSchema = z.enum(["left", "center", "right"]);
 export const spacingTokenSchema = z.enum(["none", "xs", "sm", "md", "lg"]);
 export const emphasisSchema = z.enum(["normal", "bold", "italic"]);
+export const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #1a1a1a)")
+  .optional();
+export const fontSizeSchema = z.number().int().min(6).max(72).optional();
+export const fontFamilySchema = z.string().min(1).max(60).optional();
+export const pageSizeSchema = z.enum(["letter", "a4", "legal"]);
+export const pageMarginSchema = z
+  .object({
+    top: z.number().int().min(20).max(200),
+    bottom: z.number().int().min(20).max(200),
+    left: z.number().int().min(20).max(200),
+    right: z.number().int().min(20).max(200),
+  })
+  .strict();
 
 export const documentMetaSchema = z
   .object({
@@ -33,6 +48,14 @@ export const documentMetaSchema = z
     writingStyle: writingStyleSchema,
     instructions: z.string().trim().min(1).max(4_000).nullable(),
     pageLimit: z.number().int().positive().nullable(),
+    header: z
+      .object({
+        enabled: z.boolean(),
+        skipFirstPage: z.boolean().default(true),
+      })
+      .optional(),
+    pageSize: pageSizeSchema.default("a4"),
+    margin: pageMarginSchema.optional(),
   })
   .strict();
 
@@ -47,6 +70,9 @@ export const headingStyleSchema = blockSpacingSchema
   .extend({
     alignment: nonJustifiedAlignmentSchema,
     keepWithNext: z.boolean(),
+    color: hexColorSchema,
+    fontSize: fontSizeSchema,
+    fontFamily: fontFamilySchema,
   })
   .strict();
 
@@ -54,11 +80,18 @@ export const paragraphStyleSchema = blockSpacingSchema
   .extend({
     alignment: alignmentSchema,
     emphasis: emphasisSchema,
+    color: hexColorSchema,
+    fontSize: fontSizeSchema,
+    fontFamily: fontFamilySchema,
   })
   .strict();
 
 export const listStyleSchema = blockSpacingSchema
-  .extend({ compact: z.boolean() })
+  .extend({
+    compact: z.boolean(),
+    color: hexColorSchema,
+    fontFamily: fontFamilySchema,
+  })
   .strict();
 
 export const tableStyleSchema = blockSpacingSchema
@@ -66,19 +99,33 @@ export const tableStyleSchema = blockSpacingSchema
     density: z.enum(["compact", "comfortable"]),
     headerAlignment: nonJustifiedAlignmentSchema,
     striped: z.boolean(),
+    color: hexColorSchema,
+    fontFamily: fontFamilySchema,
   })
   .strict();
 
 export const quoteStyleSchema = blockSpacingSchema
-  .extend({ alignment: z.enum(["left", "center"]) })
+  .extend({
+    alignment: z.enum(["left", "center"]),
+    color: hexColorSchema,
+    fontFamily: fontFamilySchema,
+  })
   .strict();
 
 export const calloutStyleSchema = blockSpacingSchema
-  .extend({ variant: z.enum(["note", "highlight", "warning"]) })
+  .extend({
+    variant: z.enum(["note", "highlight", "warning"]),
+    color: hexColorSchema,
+    fontFamily: fontFamilySchema,
+  })
   .strict();
 
 export const dividerStyleSchema = blockSpacingSchema
-  .extend({ variant: z.enum(["solid", "subtle"]) })
+  .extend({
+    variant: z.enum(["solid", "subtle"]),
+    color: hexColorSchema,
+    fontFamily: fontFamilySchema,
+  })
   .strict();
 
 const headingNodeSchema = z
