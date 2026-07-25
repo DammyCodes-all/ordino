@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
-  newDocumentNodeSchema,
-  nodePositionSchema,
-  nodeIdSchema,
   editNodeCommandSchema,
+  newDocumentNodeSchema,
+  nodeIdSchema,
+  nodePositionSchema,
 } from "@/contracts";
 
 export const addNodeToolSchema = z.object({
@@ -33,4 +33,6 @@ export type EditNodeToolInput = z.infer<typeof editNodeToolSchema>;
 export type MoveNodeToolInput = z.infer<typeof moveNodeToolSchema>;
 export type DeleteNodeToolInput = z.infer<typeof deleteNodeToolSchema>;
 export type ReadNodeToolInput = z.infer<typeof readNodeToolSchema>;
-export type FinalizeDocumentToolInput = z.infer<typeof finalizeDocumentToolSchema>;
+export type FinalizeDocumentToolInput = z.infer<
+  typeof finalizeDocumentToolSchema
+>;
