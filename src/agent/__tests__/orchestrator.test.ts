@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { createAgent } from "../index";
+import { describe, expect, it, vi } from "vitest";
+import type { AgentTurnInput, DocumentId, DocumentState } from "@/contracts";
 import { FakeDocumentPort, FakePdfPort } from "../fake-dependencies";
-import type { AgentTurnInput, DocumentState, DocumentId } from "@/contracts";
+import { createAgent } from "../index";
 
 describe("AgentOrchestrator acceptance tests", () => {
   const docPort = new FakeDocumentPort();
@@ -19,6 +19,8 @@ describe("AgentOrchestrator acceptance tests", () => {
       writingStyle: "professional",
       instructions: null,
       pageLimit: null,
+      pageSize: "a4",
+      header: { enabled: false, skipFirstPage: true },
     },
     nodes: [],
   };
@@ -33,48 +35,71 @@ describe("AgentOrchestrator acceptance tests", () => {
   it("runs initial turn and creates nodes, renders, and performs review", async () => {
     // Mock fetch for server API routes
     let callCount = 0;
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
-      if (url.includes("/api/ai/generate")) {
-        callCount++;
-        let text: string;
-        if (callCount === 1) {
-          // planDocument call: return DocumentPlan
-          text = JSON.stringify({
-            summary: "A brief plan",
-            sections: [{ heading: "Intro", purpose: "Intro text", estimatedParagraphs: 1, includeTable: false, includeList: false }],
-          });
-        } else if (callCount === 2) {
-          // runBatchWriterLoop: returns array of actions
-          text = JSON.stringify([
-            {
-              action: "addNode",
-              node: { type: "heading", level: 1, text: "Test Document" },
-              position: { kind: "end" },
-            },
-            { action: "finalize" },
-          ]);
-        } else {
-          // subsequent calls: finalize
-          text = JSON.stringify({ action: "finalize" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/api/ai/generate")) {
+          callCount++;
+          let text: string;
+          if (callCount === 1) {
+            // planDocument call: return DocumentPlan
+            text = JSON.stringify({
+              summary: "A brief plan",
+              sections: [
+                {
+                  heading: "Intro",
+                  purpose: "Intro text",
+                  estimatedParagraphs: 1,
+                  includeTable: false,
+                  includeList: false,
+                },
+              ],
+            });
+          } else if (callCount === 2) {
+            // runBatchWriterLoop: returns array of actions
+            text = JSON.stringify([
+              {
+                action: "addNode",
+                node: { type: "heading", level: 1, text: "Test Document" },
+                position: { kind: "end" },
+              },
+              { action: "finalize" },
+            ]);
+          } else {
+            // subsequent calls: finalize
+            text = JSON.stringify({ action: "finalize" });
+          }
+          return {
+            ok: true,
+            json: async () => ({ text }),
+          };
         }
-        return {
-          ok: true,
-          json: async () => ({ text }),
-        };
-      }
-      return { ok: true, json: async () => ({}) };
-    }));
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
 
     const events: any[] = [];
     const agent = createAgent(
       {
         document: docPort,
         pdf: pdfPort,
-        validateDocument: () => ({ documentVersion: 1, pass: true, issues: [] }),
-        validatePdf: async () => ({ documentVersion: 1, pass: true, issues: [] }),
+        validateDocument: () => ({
+          documentVersion: 1,
+          pass: true,
+          issues: [],
+        }),
+        validatePdf: async () => ({
+          documentVersion: 1,
+          pass: true,
+          issues: [],
+        }),
         onEvent: (e) => events.push(e),
       },
-      { provider: "google-ai-studio", modelId: "gemma-4-31b-it", transportRetries: 2 },
+      {
+        provider: "google-ai-studio",
+        modelId: "gemma-4-31b-it",
+        transportRetries: 2,
+      },
     );
 
     const result = await agent.runTurn(input);
@@ -98,11 +123,23 @@ describe("AgentOrchestrator acceptance tests", () => {
       {
         document: docPort,
         pdf: pdfPort,
-        validateDocument: () => ({ documentVersion: 1, pass: true, issues: [] }),
-        validatePdf: async () => ({ documentVersion: 1, pass: true, issues: [] }),
+        validateDocument: () => ({
+          documentVersion: 1,
+          pass: true,
+          issues: [],
+        }),
+        validatePdf: async () => ({
+          documentVersion: 1,
+          pass: true,
+          issues: [],
+        }),
         onEvent: () => {},
       },
-      { provider: "google-ai-studio", modelId: "gemma-4-31b-it", transportRetries: 2 },
+      {
+        provider: "google-ai-studio",
+        modelId: "gemma-4-31b-it",
+        transportRetries: 2,
+      },
     );
 
     const result = await agent.runTurn({ ...input, signal: controller.signal });

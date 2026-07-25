@@ -1,6 +1,10 @@
 "use client";
 
-import { Add01Icon, BubbleChatIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import {
+  Add01Icon,
+  BubbleChatIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 import { AnimatePresence, motion } from "motion/react";
 import { useSession } from "@/components/app-shell/session-context";
 import { AppIcon } from "@/components/ui/app-icon";
