@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DocumentMeta, documentStateSchema } from "../contracts/document";
+import { type DocumentMeta, documentStateSchema } from "../contracts/document";
 import { documentIdSchema, nodeIdSchema } from "../contracts/ids";
 
 export function createDocument(meta: DocumentMeta) {

@@ -1,5 +1,8 @@
-import { DocumentState } from "../contracts/document";
-import { ValidationIssue, ValidationReport } from "../contracts/validation";
+import type { DocumentState } from "../contracts/document";
+import type {
+  ValidationIssue,
+  ValidationReport,
+} from "../contracts/validation";
 
 function makeIssue(
   source: "document" | "pdf",

@@ -6,7 +6,7 @@ import {
   chunkByPageBreaks,
   DocumentRenderer,
 } from "../components/DocumentRenderer";
-import { registerDefaultFonts } from "../fonts";
+import { registerDefaultFonts, registerFontsFromDocument } from "../fonts";
 
 export async function renderDocumentToPdf(
   document: DocumentState,
@@ -23,6 +23,7 @@ export async function renderDocumentToPdf(
       };
     }
     registerDefaultFonts();
+    registerFontsFromDocument(document);
 
     const pdfInstance = pdf(<DocumentRenderer document={document} />);
     const blob = await pdfInstance.toBlob();

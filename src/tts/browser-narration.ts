@@ -1,7 +1,12 @@
 "use client";
 
 import type { NarrationPlaylist, NarrationSegment } from "@/contracts";
-import { speakText, stopSpeaking, pauseMediaPlayback, resumeMediaPlayback } from "@/lib/speech";
+import {
+  pauseMediaPlayback,
+  resumeMediaPlayback,
+  speakText,
+  stopSpeaking,
+} from "@/lib/speech";
 
 export type NarrationStatus = "idle" | "playing" | "paused" | "unavailable";
 

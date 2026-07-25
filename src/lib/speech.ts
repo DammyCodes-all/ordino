@@ -35,7 +35,11 @@ export function speechSynthesisSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-export type AudioPermissionState = "granted" | "denied" | "prompt" | "unsupported";
+export type AudioPermissionState =
+  | "granted"
+  | "denied"
+  | "prompt"
+  | "unsupported";
 
 /**
  * Triggers the browser permission prompt for microphone/audio.
@@ -75,7 +79,9 @@ export async function requestAudioPermission(): Promise<AudioPermissionState> {
 }
 
 /** Chrome loads voices asynchronously; wait until at least one is available. */
-export function waitForVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]> {
+export function waitForVoices(
+  timeoutMs = 1500,
+): Promise<SpeechSynthesisVoice[]> {
   if (!speechSynthesisSupported()) return Promise.resolve([]);
 
   const existing = window.speechSynthesis.getVoices();
@@ -182,7 +188,10 @@ export function unlockMediaPlayback() {
   // Valid tiny silent PCM WAV (keeps the element in a playable unlocked state).
   activeAudio.src =
     "data:audio/wav;base64,UklGRnoAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAACAgICAgICAgICAgICAgA==";
-  unlockPlay = activeAudio.play().then(() => undefined).catch(() => undefined);
+  unlockPlay = activeAudio
+    .play()
+    .then(() => undefined)
+    .catch(() => undefined);
 }
 
 export function pauseMediaPlayback() {
@@ -213,7 +222,8 @@ export async function speakText(
     await speakWithServer(trimmed, options);
     return;
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (error instanceof DOMException && error.name === "AbortError")
+      throw error;
   }
 
   if (speechSynthesisSupported()) {
@@ -354,9 +364,7 @@ async function speakWithBrowser(
         !window.speechSynthesis.speaking &&
         !window.speechSynthesis.pending
       ) {
-        finish(() =>
-          reject(new Error("Speech engine did not start.")),
-        );
+        finish(() => reject(new Error("Speech engine did not start.")));
       }
     }, 2500);
   });

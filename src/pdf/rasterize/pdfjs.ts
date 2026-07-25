@@ -1,7 +1,7 @@
 import { createCanvas } from "@napi-rs/canvas";
 import {
-  getDocument,
   GlobalWorkerOptions,
+  getDocument,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type {
   InternalRenderResult,

@@ -72,7 +72,8 @@ Instructions:
 1. Fix each reported issue with one JSON action per step.
 2. Use editNode to modify existing nodes. Use readNode first to inspect full content.
 3. Use addNode only for missing content. Use deleteNode to remove problematic content.
-4. Output {"action":"finalize"} when finished.
+4. Style fixes are valid: edit alignment, emphasis, spacing, callout variant, table striping.
+5. Output {"action":"finalize"} when finished.
 
 Available actions (position MUST use "kind", never "anchor"):
 {"action":"editNode","nodeId":"node_id","nodeType":"paragraph","patch":{"text":"Fixed text"}}

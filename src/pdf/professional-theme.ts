@@ -97,9 +97,10 @@ export function resolveHeadingStyle(
     3: THEME.FONT_SIZES.h3,
   };
   return {
-    fontSize: sizeMap[level],
+    fontSize: style.fontSize ?? sizeMap[level],
     fontWeight: 700,
-    color: THEME.COLORS.text,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
     textAlign: style.alignment,
@@ -111,8 +112,9 @@ export function resolveParagraphStyle(
   style: ParagraphStyle,
 ): Record<string, unknown> {
   return {
-    fontSize: THEME.FONT_SIZES.body,
-    color: THEME.COLORS.text,
+    fontSize: style.fontSize ?? THEME.FONT_SIZES.body,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
     textAlign: style.alignment,
@@ -126,7 +128,8 @@ export function resolveListNodeStyle(
 ): Record<string, unknown> {
   return {
     fontSize: THEME.FONT_SIZES.body,
-    color: THEME.COLORS.text,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
     lineHeight: style.compact
@@ -138,7 +141,8 @@ export function resolveListNodeStyle(
 export function resolveTableStyle(style: TableStyle): Record<string, unknown> {
   return {
     fontSize: THEME.FONT_SIZES.body,
-    color: THEME.COLORS.text,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
   };
@@ -147,7 +151,8 @@ export function resolveTableStyle(style: TableStyle): Record<string, unknown> {
 export function resolveQuoteStyle(style: QuoteStyle): Record<string, unknown> {
   return {
     fontSize: THEME.FONT_SIZES.body,
-    color: THEME.COLORS.muted,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.muted,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
     textAlign: style.alignment,
@@ -179,7 +184,8 @@ export function resolveCalloutStyle(
   const v = variantMap[style.variant];
   return {
     fontSize: THEME.FONT_SIZES.body,
-    color: THEME.COLORS.text,
+    fontFamily: style.fontFamily,
+    color: style.color ?? THEME.COLORS.text,
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
     backgroundColor: v.bg,
@@ -199,5 +205,38 @@ export function resolveDividerStyle(
   return {
     marginTop: spacingMap[style.spaceBefore],
     marginBottom: spacingMap[style.spaceAfter],
+    color: style.color,
+    variant: style.variant,
+  };
+}
+
+export function resolvePageSize(pageSize: string): string {
+  const map: Record<string, string> = {
+    letter: "LETTER",
+    a4: "A4",
+    legal: "LEGAL",
+  };
+  return map[pageSize] ?? "A4";
+}
+
+export interface PageMargin {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export function resolveMargins(margin?: {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}): PageMargin {
+  if (!margin) return { ...THEME.MARGIN };
+  return {
+    top: margin.top ?? THEME.MARGIN.top,
+    bottom: margin.bottom ?? THEME.MARGIN.bottom,
+    left: margin.left ?? THEME.MARGIN.left,
+    right: margin.right ?? THEME.MARGIN.right,
   };
 }
