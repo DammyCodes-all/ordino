@@ -1,24 +1,27 @@
 import type {
   AgentPort,
+  AgentRuntimeDependencies,
+  AgentTurnError,
   AgentTurnInput,
   AgentTurnOutput,
-  AgentTurnError,
-  AgentRuntimeDependencies,
-  GoogleAIConfiguration,
   AppResult,
-  DocumentState,
   DocumentCheckpoint,
+  DocumentState,
+  GoogleAIConfiguration,
   InternalRenderResult,
   ValidationReport,
   VisualReviewResult,
   WorkflowEvent,
-  NodeId,
 } from "@/contracts";
-import { GoogleAIClient, createSuccessResult, createErrorResult, mapErrorToAppError } from "@/google-ai";
-import { planDocument } from "./planner";
-import { ToolExecutor } from "./tool-executor";
+import {
+  createErrorResult,
+  createSuccessResult,
+  GoogleAIClient,
+} from "@/google-ai";
 import { runVisualReview } from "@/review";
 import { prepareReviewCheckpoint } from "@/review/revision-context";
+import { planDocument } from "./planner";
+import { ToolExecutor } from "./tool-executor";
 import { runBatchWriterLoop, runRevisionLoop } from "./writer";
 
 export class AgentOrchestrator implements AgentPort {
@@ -31,7 +34,11 @@ export class AgentOrchestrator implements AgentPort {
     this.client = new GoogleAIClient(configuration);
   }
 
-  private emit(stage: WorkflowEvent["stage"], message: string, level: WorkflowEvent["level"] = "info") {
+  private emit(
+    stage: WorkflowEvent["stage"],
+    message: string,
+    level: WorkflowEvent["level"] = "info",
+  ) {
     this.dependencies.onEvent({
       stage,
       message,
@@ -44,7 +51,12 @@ export class AgentOrchestrator implements AgentPort {
     this.dependencies.onThinking?.(text);
   }
 
-  private checkAborted(signal?: AbortSignal, currentDoc?: DocumentState, checkpoints?: DocumentCheckpoint[], lastRender?: InternalRenderResult | null) {
+  private checkAborted(
+    signal?: AbortSignal,
+    currentDoc?: DocumentState,
+    checkpoints?: DocumentCheckpoint[],
+    lastRender?: InternalRenderResult | null,
+  ) {
     if (signal?.aborted) {
       const err = new Error("Turn was aborted by user");
       (err as any).isAbortError = true;
@@ -57,14 +69,21 @@ export class AgentOrchestrator implements AgentPort {
     }
   }
 
-  async runTurn(input: AgentTurnInput): Promise<AppResult<AgentTurnOutput, AgentTurnError>> {
+  async runTurn(
+    input: AgentTurnInput,
+  ): Promise<AppResult<AgentTurnOutput, AgentTurnError>> {
     let currentDoc = input.document;
     const createdCheckpoints: DocumentCheckpoint[] = [];
     let lastValidRender: InternalRenderResult | null = null;
     let reviewIterations: 0 | 1 = 0;
 
     try {
-      this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+      this.checkAborted(
+        input.signal,
+        currentDoc,
+        createdCheckpoints,
+        lastValidRender,
+      );
 
       const isInitialGen = currentDoc.nodes.length === 0;
       let documentPlan: import("@/contracts").DocumentPlan | null = null;
@@ -73,26 +92,48 @@ export class AgentOrchestrator implements AgentPort {
       if (isInitialGen) {
         this.emit("planning", "Planning document structure (1 model call)…");
         this.narrate("Planning a document structure based on your request…");
-        const planRes = await planDocument(this.client, input, this.dependencies.document);
+        const planRes = await planDocument(
+          this.client,
+          input,
+          this.dependencies.document,
+        );
         if (!planRes.success) {
           return createErrorResult(
             planRes.error.code,
             planRes.error.message,
             planRes.error.retryable,
-            { recovery: { document: currentDoc, createdCheckpoints, lastValidRender } },
+            {
+              recovery: {
+                document: currentDoc,
+                createdCheckpoints,
+                lastValidRender,
+              },
+            },
           ) as any;
         }
         documentPlan = planRes.data;
-        const sectionNames = documentPlan.sections.map((s) => s.heading).join(", ");
-        this.narrate(`Plan ready: ${documentPlan.sections.length} sections — ${sectionNames}`);
+        const sectionNames = documentPlan.sections
+          .map((s) => s.heading)
+          .join(", ");
+        this.narrate(
+          `Plan ready: ${documentPlan.sections.length} sections — ${sectionNames}`,
+        );
         this.emit(
           "planning",
           `Plan ready: ${documentPlan.sections.length} section${documentPlan.sections.length === 1 ? "" : "s"} — ${documentPlan.summary.slice(0, 120)}`,
         );
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
       } else {
         // Create user_turn checkpoint before first follow-up mutation
-        const userTurnRes = this.dependencies.document.createCheckpoint(currentDoc, "user_turn");
+        const userTurnRes = this.dependencies.document.createCheckpoint(
+          currentDoc,
+          "user_turn",
+        );
         if (userTurnRes.success) {
           createdCheckpoints.push(userTurnRes.data.checkpoint);
           currentDoc = userTurnRes.data.document;
@@ -100,10 +141,7 @@ export class AgentOrchestrator implements AgentPort {
       }
 
       // 2. Generating (Writer loop)
-      this.emit(
-        "generating",
-        "Writing document content…",
-      );
+      this.emit("generating", "Writing document content…");
       this.narrate("Writing the document content…");
       const toolExec = new ToolExecutor(this.dependencies.document);
 
@@ -111,8 +149,16 @@ export class AgentOrchestrator implements AgentPort {
         this.client,
         currentDoc,
         documentPlan ?? {
-          summary: "Continue writing the document.",
-          sections: [{ heading: "Content", purpose: "Continue existing content", estimatedParagraphs: 1, includeTable: false, includeList: false }],
+          summary: input.userMessage,
+          sections: [
+            {
+              heading: "User request",
+              purpose: input.userMessage,
+              estimatedParagraphs: 1,
+              includeTable: false,
+              includeList: false,
+            },
+          ],
         },
         toolExec,
         input.userMessage,
@@ -120,6 +166,8 @@ export class AgentOrchestrator implements AgentPort {
         (message) => this.emit("generating", message),
         this.dependencies.onThinking,
         this.dependencies.onToolCall,
+        input.conversation,
+        this.dependencies.document,
       );
 
       if (!writerResult.success) {
@@ -127,40 +175,75 @@ export class AgentOrchestrator implements AgentPort {
           writerResult.error.code,
           writerResult.error.message,
           writerResult.error.retryable,
-          { recovery: { document: currentDoc, createdCheckpoints, lastValidRender } },
+          {
+            recovery: {
+              document: currentDoc,
+              createdCheckpoints,
+              lastValidRender,
+            },
+          },
         ) as any;
       }
       currentDoc = writerResult.data.document;
 
-      this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+      this.checkAborted(
+        input.signal,
+        currentDoc,
+        createdCheckpoints,
+        lastValidRender,
+      );
 
       // Review Loop (Max 1 iteration)
-      let finalValidation: ValidationReport = { documentVersion: currentDoc.version, pass: true, issues: [] };
+      let finalValidation: ValidationReport = {
+        documentVersion: currentDoc.version,
+        pass: true,
+        issues: [],
+      };
       let finalVisualReview: VisualReviewResult | null = null;
 
       while (reviewIterations < 1) {
         // 3. Rendering
-        this.emit("rendering", `Rendering document version ${currentDoc.version}`);
+        this.emit(
+          "rendering",
+          `Rendering document version ${currentDoc.version}`,
+        );
         this.narrate("Content complete — rendering the PDF…");
-        const renderRes = await this.dependencies.pdf.render(currentDoc, input.signal);
+        const renderRes = await this.dependencies.pdf.render(
+          currentDoc,
+          input.signal,
+        );
         if (!renderRes.success) {
           this.narrate("PDF rendering failed.");
           return createErrorResult(
             renderRes.error.code,
             renderRes.error.message,
             renderRes.error.retryable,
-            { recovery: { document: currentDoc, createdCheckpoints, lastValidRender } },
+            {
+              recovery: {
+                document: currentDoc,
+                createdCheckpoints,
+                lastValidRender,
+              },
+            },
           ) as any;
         }
         lastValidRender = renderRes.data;
         this.narrate("PDF rendered successfully.");
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
 
         // 4. Validating
         this.emit("validating", "Running deterministic validation");
         this.narrate("Checking document structure…");
         const docVal = this.dependencies.validateDocument(currentDoc);
-        const pdfVal = await this.dependencies.validatePdf(currentDoc, lastValidRender);
+        const pdfVal = await this.dependencies.validatePdf(
+          currentDoc,
+          lastValidRender,
+        );
         finalValidation = {
           documentVersion: currentDoc.version,
           pass: docVal.pass && pdfVal.pass,
@@ -169,21 +252,42 @@ export class AgentOrchestrator implements AgentPort {
         if (finalValidation.pass) {
           this.narrate("All structural checks passed.");
         } else {
-          this.narrate(`Found ${finalValidation.issues.length} issue${finalValidation.issues.length === 1 ? "" : "s"} during validation.`);
+          this.narrate(
+            `Found ${finalValidation.issues.length} issue${finalValidation.issues.length === 1 ? "" : "s"} during validation.`,
+          );
         }
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
 
         // 5. Rasterizing
         this.emit("rasterizing", "Rasterizing rendered pages for review");
         this.narrate("Converting pages to images for visual review…");
-        const rasterRes = await this.dependencies.pdf.rasterize(lastValidRender, input.signal);
+        const rasterRes = await this.dependencies.pdf.rasterize(
+          lastValidRender,
+          input.signal,
+        );
         if (!rasterRes.success) {
-          this.narrate("Page image generation skipped — visual review will be unavailable.");
-          this.emit("rasterizing", "Rasterization failed — skipping visual review", "warning");
+          this.narrate(
+            "Page image generation skipped — visual review will be unavailable.",
+          );
+          this.emit(
+            "rasterizing",
+            "Rasterization failed — skipping visual review",
+            "warning",
+          );
           break;
         }
         const rasterizedPages = rasterRes.data;
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
 
         // 6. Reviewing
         this.emit("reviewing", "Running visual review");
@@ -199,8 +303,14 @@ export class AgentOrchestrator implements AgentPort {
         );
 
         if (!reviewRes.success) {
-          this.narrate("Visual review skipped — continuing with validation results only.");
-          this.emit("reviewing", "Visual review failed — continuing without it", "warning");
+          this.narrate(
+            "Visual review skipped — continuing with validation results only.",
+          );
+          this.emit(
+            "reviewing",
+            "Visual review failed — continuing without it",
+            "warning",
+          );
           finalVisualReview = null;
           break;
         }
@@ -212,9 +322,16 @@ export class AgentOrchestrator implements AgentPort {
         if (finalVisualReview.pass) {
           this.narrate("Visual review passed — no layout issues found.");
         } else {
-          this.narrate(`Visual review found ${finalVisualReview.issues.length} issue${finalVisualReview.issues.length === 1 ? "" : "s"}.`);
+          this.narrate(
+            `Visual review found ${finalVisualReview.issues.length} issue${finalVisualReview.issues.length === 1 ? "" : "s"}.`,
+          );
         }
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
 
         // Check pass condition
         if (finalValidation.pass && finalVisualReview.pass) {
@@ -224,13 +341,20 @@ export class AgentOrchestrator implements AgentPort {
         // 7. Revising
         reviewIterations++;
         if (reviewIterations >= 1) {
-          this.narrate("Reached maximum revision passes — delivering best version.");
+          this.narrate(
+            "Reached maximum revision passes — delivering best version.",
+          );
           break; // Maximum iterations reached
         }
 
         this.emit("revising", `Executing revision pass ${reviewIterations}`);
-        this.narrate(`Revision pass ${reviewIterations}: fixing identified issues…`);
-        const prep = await prepareReviewCheckpoint(currentDoc, this.dependencies.document);
+        this.narrate(
+          `Revision pass ${reviewIterations}: fixing identified issues…`,
+        );
+        const prep = await prepareReviewCheckpoint(
+          currentDoc,
+          this.dependencies.document,
+        );
         if (prep) {
           createdCheckpoints.push(prep.checkpoint);
           currentDoc = prep.nextDocument;
@@ -251,19 +375,32 @@ export class AgentOrchestrator implements AgentPort {
           currentDoc = revisionResult.data.document;
           this.narrate("Revision complete.");
         } else {
-          this.narrate("Revision step failed — continuing with current version.");
+          this.narrate(
+            "Revision step failed — continuing with current version.",
+          );
           this.emit("revising", "Revision loop failed", "warning");
         }
-        this.checkAborted(input.signal, currentDoc, createdCheckpoints, lastValidRender);
+        this.checkAborted(
+          input.signal,
+          currentDoc,
+          createdCheckpoints,
+          lastValidRender,
+        );
       }
 
       this.emit("finalizing", "Finalizing agent turn");
       this.narrate("Finalizing document…");
 
-      const exportRes = await this.dependencies.pdf.export(currentDoc, lastValidRender ?? undefined, input.signal);
+      const exportRes = await this.dependencies.pdf.export(
+        currentDoc,
+        lastValidRender ?? undefined,
+        input.signal,
+      );
       const exportResult = exportRes.success ? exportRes.data : null;
       if (!exportRes.success) {
-        this.narrate("PDF export encountered an issue — preview is still available.");
+        this.narrate(
+          "PDF export encountered an issue — preview is still available.",
+        );
         this.emit("finalizing", "Export failed — preview available", "warning");
       }
 
@@ -286,13 +423,18 @@ export class AgentOrchestrator implements AgentPort {
           recovery: err.recovery,
         }) as any;
       }
-      return createErrorResult("MODEL_REQUEST_FAILED", err?.message || String(err), true, {
-        recovery: {
-          document: currentDoc,
-          createdCheckpoints,
-          lastValidRender,
+      return createErrorResult(
+        "MODEL_REQUEST_FAILED",
+        err?.message || String(err),
+        true,
+        {
+          recovery: {
+            document: currentDoc,
+            createdCheckpoints,
+            lastValidRender,
+          },
         },
-      }) as any;
+      ) as any;
     }
   }
 }
