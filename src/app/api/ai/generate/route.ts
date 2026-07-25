@@ -11,7 +11,11 @@ export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { code: "MISSING_API_KEY", message: "GOOGLE_GENERATIVE_AI_API_KEY environment variable is not configured." },
+      {
+        code: "MISSING_API_KEY",
+        message:
+          "GOOGLE_GENERATIVE_AI_API_KEY environment variable is not configured.",
+      },
       { status: 503 },
     );
   }
@@ -21,15 +25,27 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = aiGenerateRequestSchema.safeParse(body);
     if (!parsed.success) {
       return Response.json(
-        { code: "INVALID_MODEL_OUTPUT", message: "Invalid request payload", details: parsed.error.format() },
+        {
+          code: "INVALID_MODEL_OUTPUT",
+          message: "Invalid request payload",
+          details: parsed.error.format(),
+        },
         { status: 400 },
       );
     }
 
-    const { prompt, systemPrompt, modelId, images, tools, toolChoice } = parsed.data;
-    const modelToUse = modelId?.trim() || process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() || DEFAULT_MODEL_ID;
+    const { prompt, systemPrompt, modelId, images, tools, toolChoice } =
+      parsed.data;
+    const modelToUse =
+      modelId?.trim() ||
+      process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
+      DEFAULT_MODEL_ID;
 
-    let content: string | Array<{ type: "text"; text: string } | { type: "image"; image: string }> = prompt;
+    let content:
+      | string
+      | Array<
+          { type: "text"; text: string } | { type: "image"; image: string }
+        > = prompt;
 
     if (images && images.length > 0) {
       content = [
@@ -49,10 +65,10 @@ export async function POST(request: Request): Promise<Response> {
               {
                 description: t.description,
                 inputSchema: jsonSchema(
-                  (t.parameters ?? { type: "object", properties: {} }) as Record<
-                    string,
-                    unknown
-                  >,
+                  (t.parameters ?? {
+                    type: "object",
+                    properties: {},
+                  }) as Record<string, unknown>,
                 ),
               },
             ]),
@@ -68,8 +84,10 @@ export async function POST(request: Request): Promise<Response> {
           content: content as any,
         },
       ],
-      ...(toolsRecord ? { tools: toolsRecord as any, toolChoice: toolChoice ?? "auto" } : {}),
-      maxRetries: 2,
+      ...(toolsRecord
+        ? { tools: toolsRecord as any, toolChoice: toolChoice ?? "auto" }
+        : {}),
+      maxRetries: 0,
       abortSignal: request.signal,
     });
 
@@ -82,20 +100,42 @@ export async function POST(request: Request): Promise<Response> {
     });
   } catch (error: any) {
     const message = error?.message || String(error);
-    if (message.includes("401") || message.includes("403") || message.includes("API key")) {
+    if (
+      error?.name === "AbortError" ||
+      message.toLowerCase().includes("abort")
+    ) {
       return Response.json(
-        { code: "MODEL_AUTH_FAILED", message: "Authentication failed for Google AI Studio." },
+        { code: "ABORTED", message: "Request was aborted by the client." },
+        { status: 499 },
+      );
+    }
+    if (
+      message.includes("401") ||
+      message.includes("403") ||
+      message.includes("API key")
+    ) {
+      return Response.json(
+        {
+          code: "MODEL_AUTH_FAILED",
+          message: "Authentication failed for Google AI Studio.",
+        },
         { status: 401 },
       );
     }
     if (message.includes("429")) {
       return Response.json(
-        { code: "MODEL_RATE_LIMITED", message: "Rate limited by Google AI Studio." },
+        {
+          code: "MODEL_RATE_LIMITED",
+          message: "Rate limited by Google AI Studio.",
+        },
         { status: 429 },
       );
     }
     return Response.json(
-      { code: "MODEL_REQUEST_FAILED", message: message || "Failed to generate AI response." },
+      {
+        code: "MODEL_REQUEST_FAILED",
+        message: message || "Failed to generate AI response.",
+      },
       { status: 500 },
     );
   }

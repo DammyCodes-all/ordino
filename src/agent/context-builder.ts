@@ -41,9 +41,9 @@ Review Revision: ${input.document.reviewRevision}
 ${JSON.stringify(outline, null, 2)}
 
 [Tool Instructions]
-You have access to 6 tools: addNode, editNode, moveNode, deleteNode, readNode, finalizeDocument.
+You have access to 6 tools: addNode, editNode, moveNode, deleteNode, readNode, finalize.
 Call readNode if you need the full content of a node.
-Call finalizeDocument when you have finished all document modifications.`;
+Call finalize when you have finished all document modifications.`;
 
   // Build conversation history (only completed prior messages)
   const historyText = input.conversation
@@ -120,9 +120,9 @@ ${plan.summary}
 ${planSections}
 
 [Tool Instructions]
-You have access to 7 tools: addNode, editNode, moveNode, deleteNode, readNode, editMeta, finalizeDocument.
+You have access to 7 tools: addNode, editNode, moveNode, deleteNode, readNode, editMeta, finalize.
 Prefer editing existing content over adding new content.
 Call readNode if you need the full content of a node before editing it.
 Use editNode to modify existing nodes. Use addNode only for genuinely new sections.
-Call finalizeDocument when you have finished all document modifications.`;
+Call finalize when you have finished all document modifications.`;
 }
