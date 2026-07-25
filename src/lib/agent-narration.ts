@@ -34,6 +34,7 @@ export function appendNarration(existing: string, line: string): string {
   const next = line.trim();
   if (!next) return existing;
   if (existing.includes(next)) return existing;
+  if (!existing.trim()) return next;
   return `${existing}\n\n${next}`.slice(0, 20_000);
 }
 
