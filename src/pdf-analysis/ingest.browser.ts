@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  extractText,
-  extractTextItems,
-  getDocumentProxy,
-} from "unpdf";
+import { extractText, extractTextItems, getDocumentProxy } from "unpdf";
 import type {
-  AnalyzablePdfInput,
   AnalysisDocument,
   AnalysisPage,
+  AnalyzablePdfInput,
   AppResult,
   PdfTextSpan,
 } from "@/contracts";

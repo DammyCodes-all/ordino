@@ -25,7 +25,7 @@ export function CalloutNode({ node }: { node: CalloutData }) {
           style={{
             fontWeight: 700,
             fontSize: THEME.FONT_SIZES.body,
-            color: THEME.COLORS.text,
+            color: resolved.color as string,
             marginBottom: 4,
           }}
         >

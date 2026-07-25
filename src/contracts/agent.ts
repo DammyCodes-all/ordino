@@ -41,10 +41,7 @@ export const agentTurnOutputSchema = z
     exportResult: exportResultSchema.nullable(),
     validation: validationReportSchema,
     visualReview: visualReviewResultSchema.nullable(),
-    reviewIterations: z.union([
-      z.literal(0),
-      z.literal(1),
-    ]),
+    reviewIterations: z.union([z.literal(0), z.literal(1)]),
     assistantMessage: z.string().trim().min(1).max(20_000),
   })
   .strict();

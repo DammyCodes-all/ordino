@@ -51,10 +51,7 @@ function ShellLayout() {
       >
         {/* Desktop rail sits in flow; mobile rail is fixed bottom inside LeftRail */}
         <div className="hidden h-full md:flex md:items-stretch">
-          <LeftRail
-            historyOpen={historyOpen}
-            onToggleHistory={toggleHistory}
-          />
+          <LeftRail historyOpen={historyOpen} onToggleHistory={toggleHistory} />
           <ChatHistorySidebar open={historyOpen} />
         </div>
       </nav>

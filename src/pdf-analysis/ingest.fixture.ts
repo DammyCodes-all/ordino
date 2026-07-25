@@ -1,8 +1,8 @@
+import { PDFDocument, rgb } from "pdf-lib";
+import type { AnalysisDocument, AppResult } from "@/contracts";
 import { createSuccessResult } from "@/google-ai";
 import { fromUploadedPdf } from "@/pdf-analysis/adapters";
 import { ingestAnalyzablePdf } from "@/pdf-analysis/ingest";
-import type { AnalysisDocument, AppResult } from "@/contracts";
-import { PDFDocument, rgb } from "pdf-lib";
 
 /**
  * Fixture-friendly smoke: build a tiny PDF, ingest page 1, assert text + image.

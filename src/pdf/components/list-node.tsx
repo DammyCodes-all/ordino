@@ -25,7 +25,13 @@ export function ListNode({ node }: { node: ListData }) {
           >
             {node.ordered ? `${idx + 1}.` : "\u2022"}
           </Text>
-          <Text style={{ flex: 1, fontSize: THEME.FONT_SIZES.body }}>
+          <Text
+            style={{
+              flex: 1,
+              fontSize: THEME.FONT_SIZES.body,
+              color: (containerStyle as any).color ?? THEME.COLORS.text,
+            }}
+          >
             {item}
           </Text>
         </View>

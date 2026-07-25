@@ -1,13 +1,14 @@
 export { createDocument } from "./create-document";
+
 import {
+  type DocumentCheckpoint,
+  type DocumentState,
   documentStateSchema,
-  DocumentState,
-  DocumentCheckpoint,
 } from "../contracts/document";
 import {
+  createCheckpoint as createCheckpointImpl,
   createOutline,
   executeCommand,
-  createCheckpoint as createCheckpointImpl,
   restoreCheckpoint as restoreCheckpointImpl,
 } from "./command-executor";
 import { validateDocument as validateDocumentImpl } from "./validate-document";

@@ -40,7 +40,7 @@ export function TableNode({ node }: { node: TableNodeData }) {
               style={{
                 fontWeight: 700,
                 fontSize: THEME.FONT_SIZES.body,
-                color: THEME.COLORS.text,
+                color: (containerStyle as any).color ?? THEME.COLORS.text,
                 textAlign: node.style.headerAlignment,
               }}
             >
@@ -71,7 +71,15 @@ export function TableNode({ node }: { node: TableNodeData }) {
                 paddingHorizontal: 6,
               }}
             >
-              <Text style={{ fontSize: THEME.FONT_SIZES.body }}>{cell}</Text>
+              <Text
+                style={{
+                  fontSize: THEME.FONT_SIZES.body,
+                  fontFamily: (containerStyle as any).fontFamily,
+                  color: (containerStyle as any).color ?? THEME.COLORS.text,
+                }}
+              >
+                {cell}
+              </Text>
             </View>
           ))}
         </View>

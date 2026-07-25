@@ -1,7 +1,7 @@
-import { z } from "zod";
-import type { GoogleAIClient, GenerateOptions } from "./google-ai-client";
-import { createSuccessResult, createErrorResult } from "./errors";
+import type { z } from "zod";
 import type { AppResult } from "@/contracts";
+import { createErrorResult, createSuccessResult } from "./errors";
+import type { GenerateOptions, GoogleAIClient } from "./google-ai-client";
 
 export async function generateStructuredOutput<T>(
   client: GoogleAIClient,

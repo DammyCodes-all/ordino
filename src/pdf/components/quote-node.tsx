@@ -19,6 +19,7 @@ export function QuoteNode({ node }: { node: QuoteData }) {
       <Text
         style={{
           fontSize: style.fontSize as number,
+          fontFamily: style.fontFamily as string | undefined,
           color: style.color as string,
           fontStyle: style.fontStyle as "italic",
           textAlign: style.textAlign as "left" | "center",

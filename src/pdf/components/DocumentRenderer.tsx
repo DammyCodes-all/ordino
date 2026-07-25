@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { DocumentNode, DocumentState } from "../../contracts/document";
-import { THEME } from "../professional-theme";
+import { resolveMargins, resolvePageSize, THEME } from "../professional-theme";
 import { CalloutNode } from "./callout-node";
 import { DividerNode } from "./divider-node";
 import { HeadingNode } from "./heading-node";
@@ -9,13 +9,6 @@ import { PageBreakNode } from "./page-break-node";
 import { ParagraphNode } from "./paragraph-node";
 import { QuoteNode } from "./quote-node";
 import { TableNode } from "./table-node";
-
-const PAGE_STYLE = {
-  paddingTop: THEME.MARGIN.top,
-  paddingBottom: THEME.MARGIN.bottom,
-  paddingLeft: THEME.MARGIN.left,
-  paddingRight: THEME.MARGIN.right,
-};
 
 export function chunkByPageBreaks(nodes: DocumentNode[]): DocumentNode[][] {
   const pages: DocumentNode[][] = [[]];
@@ -56,9 +49,11 @@ function renderNode(node: DocumentNode) {
 function PageFooter({
   pageNumber,
   title,
+  margins,
 }: {
   pageNumber: number;
   title: string;
+  margins: { left: number; right: number };
 }) {
   return (
     <View
@@ -66,8 +61,8 @@ function PageFooter({
       style={{
         position: "absolute",
         bottom: 20,
-        left: THEME.MARGIN.left,
-        right: THEME.MARGIN.right,
+        left: margins.left,
+        right: margins.right,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
@@ -79,9 +74,45 @@ function PageFooter({
   );
 }
 
+function PageHeader({
+  pageNumber,
+  title,
+  margins,
+}: {
+  pageNumber: number;
+  title: string;
+  margins: { left: number; right: number };
+}) {
+  return (
+    <View
+      fixed
+      style={{
+        position: "absolute",
+        top: 20,
+        left: margins.left,
+        right: margins.right,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <Text style={THEME.PAGE_NUMBER_STYLE}>{pageNumber}</Text>
+      <Text style={THEME.FOOTER_STYLE}>{title}</Text>
+    </View>
+  );
+}
+
 export function DocumentRenderer({ document }: { document: DocumentState }) {
   const pages = chunkByPageBreaks(document.nodes);
   const title = document.meta.title || "Untitled";
+  const pageSize = resolvePageSize(document.meta.pageSize);
+  const margins = resolveMargins(document.meta.margin);
+  const pageStyle = {
+    paddingTop: margins.top,
+    paddingBottom: margins.bottom,
+    paddingLeft: margins.left,
+    paddingRight: margins.right,
+  };
 
   return (
     <Document
@@ -92,8 +123,8 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
       {pages.map((nodes, pageIndex) => (
         <Page
           key={`page-${pageIndex}-${nodes[0]?.id ?? "empty"}`}
-          size={THEME.PAGE_SIZE}
-          style={PAGE_STYLE}
+          size={pageSize as any}
+          style={pageStyle}
           wrap
         >
           {pageIndex === 0 ? (
@@ -110,7 +141,19 @@ export function DocumentRenderer({ document }: { document: DocumentState }) {
             </Text>
           ) : null}
           {nodes.map((node) => renderNode(node))}
-          <PageFooter pageNumber={pageIndex + 1} title={title} />
+          {document.meta.header?.enabled &&
+          !(pageIndex === 0 && document.meta.header?.skipFirstPage) ? (
+            <PageHeader
+              pageNumber={pageIndex + 1}
+              title={title}
+              margins={margins}
+            />
+          ) : null}
+          <PageFooter
+            pageNumber={pageIndex + 1}
+            title={title}
+            margins={margins}
+          />
         </Page>
       ))}
     </Document>

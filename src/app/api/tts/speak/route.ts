@@ -32,11 +32,9 @@ async function synthesizeWithEspeak(text: string, language?: string) {
   const voice = voiceForLanguage(language);
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      "espeak-ng",
-      ["-v", voice, "-w", wavPath, "--", text],
-      { stdio: ["ignore", "ignore", "pipe"] },
-    );
+    const child = spawn("espeak-ng", ["-v", voice, "-w", wavPath, "--", text], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
     let stderr = "";
     child.stderr.on("data", (chunk) => {
       stderr += String(chunk);
@@ -82,10 +80,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(
       {
         code: "TTS_UNAVAILABLE",
-        message:
-          message.includes("ENOENT")
-            ? "espeak-ng is not installed on the server."
-            : message,
+        message: message.includes("ENOENT")
+          ? "espeak-ng is not installed on the server."
+          : message,
       },
       { status: 503 },
     );

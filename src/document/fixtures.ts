@@ -1,4 +1,4 @@
-import { DocumentState } from "../contracts/document";
+import type { DocumentState } from "../contracts/document";
 
 const newId = () => crypto.randomUUID();
 

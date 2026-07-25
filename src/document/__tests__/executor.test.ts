@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createDocument } from "../create-document";
-import { createDocumentPort } from "../index";
 import { professionalDocumentFixture } from "../fixtures";
+import { createDocumentPort } from "../index";
 import { validateDocument } from "../validate-document";
 
 const meta = professionalDocumentFixture.meta as any;
