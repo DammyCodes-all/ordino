@@ -48,8 +48,8 @@ export function ReviewFindings() {
         </span>
       </button>
 
-      {!collapsed && (
-        passed ? (
+      {!collapsed &&
+        (passed ? (
           <p className="px-2.5 py-2 text-xs text-muted">
             Layout validation
             {visualReview ? " and visual review" : ""} cleared for this version.
@@ -88,8 +88,7 @@ export function ReviewFindings() {
               </li>
             ))}
           </ul>
-        )
-      )}
+        ))}
     </div>
   );
 }

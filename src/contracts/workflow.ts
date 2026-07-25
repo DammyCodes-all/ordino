@@ -38,10 +38,7 @@ export const agentTurnStateSchema = z
   .object({
     running: z.boolean(),
     stage: workflowStageSchema,
-    reviewIteration: z.union([
-      z.literal(0),
-      z.literal(1),
-    ]),
+    reviewIteration: z.union([z.literal(0), z.literal(1)]),
   })
   .strict();
 

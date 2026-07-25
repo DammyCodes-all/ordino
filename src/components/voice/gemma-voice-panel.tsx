@@ -173,48 +173,51 @@ export function GemmaVoicePanel() {
       );
       return;
     }
-    await withSpeech(async () => {
-      setListening(true);
-      const heard = await listenOnce({
-        lang: languageCode,
-        signal: abortRef.current?.signal,
-      });
-      setListening(false);
+    await withSpeech(
+      async () => {
+        setListening(true);
+        const heard = await listenOnce({
+          lang: languageCode,
+          signal: abortRef.current?.signal,
+        });
+        setListening(false);
 
-      const userTurn: VoiceTurn = {
-        id: crypto.randomUUID(),
-        role: "user",
-        text: heard.transcript,
-      };
-      setTurns((prev) => [...prev, userTurn]);
+        const userTurn: VoiceTurn = {
+          id: crypto.randomUUID(),
+          role: "user",
+          text: heard.transcript,
+        };
+        setTurns((prev) => [...prev, userTurn]);
 
-      const data = await callVoiceApi({
-        mode: "chat",
-        userMessage: heard.transcript,
-        documentText,
-        documentTitle: document.meta.title,
-        preferredLanguage: languageCode,
-        conversation: [...turns, userTurn].map((turnItem) => ({
-          role: turnItem.role,
-          text: turnItem.text,
-        })),
-      });
+        const data = await callVoiceApi({
+          mode: "chat",
+          userMessage: heard.transcript,
+          documentText,
+          documentTitle: document.meta.title,
+          preferredLanguage: languageCode,
+          conversation: [...turns, userTurn].map((turnItem) => ({
+            role: turnItem.role,
+            text: turnItem.text,
+          })),
+        });
 
-      setLanguageCode(data.languageCode);
-      setLanguageName(data.languageName);
-      const assistantTurn: VoiceTurn = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: data.reply,
-      };
-      setTurns((prev) => [...prev, assistantTurn]);
+        setLanguageCode(data.languageCode);
+        setLanguageName(data.languageName);
+        const assistantTurn: VoiceTurn = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: data.reply,
+        };
+        setTurns((prev) => [...prev, assistantTurn]);
 
-      setSpeaking(true);
-      await speakLongText(data.reply, {
-        lang: data.languageCode,
-        signal: abortRef.current?.signal,
-      });
-    }, { requireMic: true });
+        setSpeaking(true);
+        await speakLongText(data.reply, {
+          lang: data.languageCode,
+          signal: abortRef.current?.signal,
+        });
+      },
+      { requireMic: true },
+    );
   }
 
   function handleStop() {

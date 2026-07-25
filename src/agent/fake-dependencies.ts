@@ -1,21 +1,21 @@
 import {
-  type DocumentState,
-  type DocumentPort,
-  type PdfPort,
-  type InternalRenderResult,
-  type RasterizedPage,
-  type ExportResult,
-  type ValidationReport,
   type CheckpointCreation,
   type CommandExecution,
-  type ReadNodeReceipt,
-  type DocumentCommand,
-  type NodeId,
-  type DocumentCheckpoint,
-  documentStateSchema,
   checkpointIdSchema,
+  type DocumentCheckpoint,
+  type DocumentCommand,
+  type DocumentPort,
+  type DocumentState,
+  documentStateSchema,
+  type ExportResult,
+  type InternalRenderResult,
+  type NodeId,
+  type PdfPort,
+  type RasterizedPage,
+  type ReadNodeReceipt,
+  type ValidationReport,
 } from "@/contracts";
-import { createSuccessResult, createErrorResult } from "@/google-ai";
+import { createErrorResult, createSuccessResult } from "@/google-ai";
 
 export class FakeDocumentPort implements DocumentPort {
   private nodeCounter = 0;
@@ -50,8 +50,15 @@ export class FakeDocumentPort implements DocumentPort {
         if (command.position.kind === "end") {
           nextNodes.push(node);
         } else {
-          const targetIdx = nextNodes.findIndex((n) => n.id === (command.position as any).nodeId);
-          const insertAt = targetIdx === -1 ? nextNodes.length : command.position.kind === "before" ? targetIdx : targetIdx + 1;
+          const targetIdx = nextNodes.findIndex(
+            (n) => n.id === (command.position as any).nodeId,
+          );
+          const insertAt =
+            targetIdx === -1
+              ? nextNodes.length
+              : command.position.kind === "before"
+                ? targetIdx
+                : targetIdx + 1;
           nextNodes.splice(insertAt, 0, node);
         }
       }
@@ -80,9 +87,19 @@ export class FakeDocumentPort implements DocumentPort {
         updatedNodeIds,
         movedNodeIds,
         deletedNodeIds,
-        affectsPagination: command.type !== "edit_node" || Object.keys((command as any).patch || {}).some(
-          (f: string) => ["text", "level", "items", "columns", "rows", "ordered", "title"].includes(f),
-        ),
+        affectsPagination:
+          command.type !== "edit_node" ||
+          Object.keys((command as any).patch || {}).some((f: string) =>
+            [
+              "text",
+              "level",
+              "items",
+              "columns",
+              "rows",
+              "ordered",
+              "title",
+            ].includes(f),
+          ),
       },
     };
 
@@ -168,7 +185,8 @@ export class FakePdfPort implements PdfPort {
         documentVersion: render.documentVersion,
         pageNumber: 1,
         mimeType: "image/png",
-        dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSAhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+        dataUrl:
+          "data:image/png;base64,iVBORw0KGgoAAAANSAhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
         widthPx: 100,
         heightPx: 100,
       },
@@ -184,7 +202,9 @@ export class FakePdfPort implements PdfPort {
       documentId: document.documentId,
       documentVersion: document.version,
       filename: `${document.meta.title}.pdf`,
-      blob: existingRender?.pdfBlob ?? new Blob(["fake-pdf"], { type: "application/pdf" }),
+      blob:
+        existingRender?.pdfBlob ??
+        new Blob(["fake-pdf"], { type: "application/pdf" }),
     });
   }
 }

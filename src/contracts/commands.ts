@@ -156,6 +156,16 @@ export const editMetaCommandSchema = z
     patch: z
       .object({
         title: z.string().trim().min(1).max(200).optional(),
+        pageSize: z.enum(["letter", "a4", "legal"]).optional(),
+        margin: z
+          .object({
+            top: z.number().int().min(20).max(200),
+            bottom: z.number().int().min(20).max(200),
+            left: z.number().int().min(20).max(200),
+            right: z.number().int().min(20).max(200),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .refine((patch) => Object.keys(patch).length > 0, {
